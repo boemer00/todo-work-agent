@@ -2,13 +2,11 @@
 Configuration and settings for the LangGraph agent.
 
 Handles LLM initialization and tool registration.
+
+Note: Environment variables are loaded in app.py before this module is imported.
 """
 
 from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 
 def get_llm():

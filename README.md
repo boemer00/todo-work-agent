@@ -12,10 +12,11 @@ A complete, beginner-friendly tutorial on building a To-Do agent with LangGraph.
 
 ## 📁 Files in This Project
 
-- **`todo_agent.py`** - The complete agent implementation with detailed comments
+- **`app.py`** - CLI entry point with auto-detection and persistence
+- **`agent/`** - Agent implementation (graph, nodes, state, tools)
+- **`database/`** - Database utilities and task management
 - **`TUTORIAL.md`** - Step-by-step guide explaining concepts and mindset
 - **`ARCHITECTURE.md`** - Visual diagrams and architecture deep-dive
-- **`test_agent.py`** - Test script to see the agent in action
 - **`requirements.txt`** - Python dependencies
 
 ## 🚀 Quick Start
@@ -36,45 +37,65 @@ OPENAI_API_KEY=your_key_here
 
 ### 3. Run the Agent
 
-**Interactive mode:**
+**Default mode (auto-detects your username):**
 ```bash
-python todo_agent.py
+python app.py
 ```
 
-**Test mode:**
+**Specify a custom user:**
 ```bash
-python test_agent.py
+python app.py --user alice
+```
+
+**View help:**
+```bash
+python app.py --help
 ```
 
 ## 💬 Example Interactions
 
 ```
-You: Add a task to buy milk
-🤖 Agent: I've added "buy milk" to your tasks!
+============================================================
+🤖 To-Do Agent with Persistence
+============================================================
 
-You: What are my current tasks?
-🤖 Agent: Your tasks:
+✓ User: renatoboemer
+✓ Session ID: renatoboemer_session_1760452854
+
+Commands:
+  - Type your message to interact with the agent
+  - Type 'quit', 'exit', or 'q' to exit
+============================================================
+
+You: add gym to my list
+
+🤖 Agent: I've added "gym" to your task list!
+
+You: what are my tasks?
+
+🤖 Agent: Here are your tasks:
 1. Buy groceries
 2. Write LangGraph tutorial
-3. Go to gym
+3. gym
 
-You: Mark task 2 as done
-🤖 Agent: Task #2 has been marked as done!
+You: mark task 3 as done
+
+🤖 Agent: Task #3 "gym" has been marked as complete!
 ```
 
 ## 📚 Learning Path
 
 **Start here:**
 1. Read [TUTORIAL.md](TUTORIAL.md) - Understand the concepts
-2. Read [todo_agent.py](todo_agent.py) - See the implementation
-3. Run `python test_agent.py` - See it working
+2. Read [app.py](app.py) and explore `agent/` directory - See the implementation
+3. Run `python app.py` - Try it yourself
 4. Read [ARCHITECTURE.md](ARCHITECTURE.md) - Deep dive into flow
 
 **Then experiment:**
 - Add a new tool (e.g., `edit_task`, `search_tasks`)
-- Modify the state to track task completion
-- Add persistent storage (SQLite)
-- Implement memory across sessions
+- Modify the state to track additional task metadata
+- Extend the database schema (SQLite already included!)
+- Implement session resumption using thread_id
 
 ## 🧠 Core Concepts
 
@@ -106,30 +127,40 @@ This is called the **ReAct pattern** (Reasoning + Acting).
 
 ## 🔧 Tools Included
 
-- `add_task(task: str)` - Add a new task
-- `list_tasks()` - Show all tasks
-- `mark_task_done(task_number: int)` - Mark a task complete
-- `clear_all_tasks()` - Clear all tasks
+- `add_task(task: str, user_id: str)` - Add a new task
+- `list_tasks(user_id: str)` - Show all tasks for the user
+- `mark_task_done(task_number: int, user_id: str)` - Mark a task complete
+- `clear_all_tasks(user_id: str)` - Clear all tasks
 
-**Note:** Currently using mock implementations. You can extend these to use a real database.
+**Features:**
+- SQLite database for persistent task storage
+- Multi-user support (tasks are isolated per user)
+- LangGraph checkpointing for conversation memory
 
 ## 🚧 Extending the Agent
 
-### Add Persistent Storage
+### Add More Task Metadata
 
-Replace mock functions with database calls:
+The database schema is in `database/tasks.py`. Extend it:
 
 ```python
-import sqlite3
-
-def add_task(task: str) -> str:
-    conn = sqlite3.connect("tasks.db")
+def create_tasks_table():
+    """Create the tasks table with additional fields."""
+    conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO tasks (task, done) VALUES (?, ?)",
-                   (task, False))
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            task TEXT NOT NULL,
+            done BOOLEAN DEFAULT 0,
+            priority TEXT DEFAULT 'medium',
+            due_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
-    return f"✓ Added task: '{task}'"
 ```
 
 ### Add More Tools
@@ -144,18 +175,17 @@ def edit_task(task_number: int, new_description: str) -> str:
 tools = [add_task, list_tasks, mark_task_done, clear_all_tasks, edit_task]
 ```
 
-### Add Conversation Memory
+### Resume Previous Conversations
 
-Use LangGraph's checkpointing:
+The agent already has checkpointing! To resume a session:
 
 ```python
-from langgraph.checkpoint.sqlite import SqliteSaver
+# In app.py, instead of generating a new thread_id:
+# thread_id = f"{user_id}_session_{int(time.time())}"
 
-memory = SqliteSaver.from_conn_string("checkpoints.db")
-graph = workflow.compile(checkpointer=memory)
-
-# Use thread_id to persist conversations
-config = {"configurable": {"thread_id": "user_123"}}
+# Use a saved thread_id to resume:
+thread_id = "alice_session_1760452854"  # From previous run
+config = {"configurable": {"thread_id": thread_id}}
 result = graph.invoke(state, config)
 ```
 
