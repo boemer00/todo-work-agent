@@ -6,8 +6,9 @@ Contains the agent node (LLM reasoning) and routing functions.
 
 from typing import Literal
 from langgraph.prebuilt import ToolNode
+from langchain_core.messages import SystemMessage
 from .state import State
-from config.settings import get_llm_with_tools, get_tools
+from config.settings import get_llm_with_tools, get_tools, SYSTEM_MESSAGE
 
 
 def agent_node(state: State) -> dict:
@@ -16,9 +17,10 @@ def agent_node(state: State) -> dict:
 
     This node:
     1. Takes all messages from state
-    2. Sends them to the LLM with tools bound
-    3. LLM either responds OR decides to call a tool
-    4. Returns the LLM's response (which might include tool calls)
+    2. Injects system message if not present
+    3. Sends them to the LLM with tools bound
+    4. LLM either responds OR decides to call a tool
+    5. Returns the LLM's response (which might include tool calls)
 
     Think of this as the "brain" of your agent.
 
@@ -29,6 +31,12 @@ def agent_node(state: State) -> dict:
         Dictionary with updated messages
     """
     messages = state["messages"]
+
+    # Inject system message at the start if not already present
+    # This ensures the agent's persona is always active
+    if not messages or not isinstance(messages[0], SystemMessage):
+        messages = [SystemMessage(content=SYSTEM_MESSAGE)] + messages
+
     llm_with_tools = get_llm_with_tools()
     response = llm_with_tools.invoke(messages)
 
