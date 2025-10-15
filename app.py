@@ -8,16 +8,32 @@ FEATURES:
 - Conversation memory (LangGraph checkpointing)
 - Multi-user support
 - Clean modular architecture
+- LangSmith observability (automatic tracing)
 
 USAGE:
     python app.py
     python app.py --user <username>
 """
 
+# CRITICAL: Load environment variables FIRST, before any LangChain imports
+# This ensures LangSmith tracing is activated when LLM is instantiated
+from dotenv import load_dotenv
+load_dotenv()
+
+# Now setup LangSmith tracing BEFORE importing agent components
+from monitoring import setup_langsmith, add_metadata
+from monitoring.metrics import get_metrics
+setup_langsmith()  # This must run before any LangChain components are created
+
+# Standard library imports
 import time
 import argparse
 import getpass
+
+# LangChain imports (after environment is configured)
 from langchain_core.messages import HumanMessage
+
+# Agent imports (after LangSmith is configured)
 from agent.graph import create_graph
 
 
@@ -34,9 +50,14 @@ def run_agent(user_id=None):
     - Generates unique thread ID for conversation tracking
     - Maintains conversation context across messages
     - Supports conversation resumption via thread_id
+    - LangSmith tracing for observability (already configured at module level)
     """
-    # Create the graph (includes checkpointing)
+    # Create the graph (LangSmith tracing already active from module initialization)
     graph = create_graph()
+
+    # Check if LangSmith is configured
+    import os
+    langsmith_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
 
     # Auto-detect user ID if not provided
     if user_id is None:
@@ -46,22 +67,38 @@ def run_agent(user_id=None):
             user_id = "default"
 
     print("=" * 60)
-    print("🤖 To-Do Agent with Persistence")
+    print("🤖 To-Do Agent with Persistence & Observability")
     print("=" * 60)
 
     # Generate unique thread ID for this conversation
     # Format: {user_id}_session_{timestamp}
     thread_id = f"{user_id}_session_{int(time.time())}"
 
-    # Configuration for checkpointing
+    # Configuration for checkpointing + metadata
     # The thread_id tells LangGraph which conversation to track
     config = {"configurable": {"thread_id": thread_id}}
 
+    # Add LangSmith metadata for tracing
+    if langsmith_enabled:
+        metadata = add_metadata(
+            user_id=user_id,
+            thread_id=thread_id,
+            session_type="interactive"
+        )
+        config["metadata"] = metadata
+
+    # Initialize metrics tracking
+    metrics = get_metrics()
+    metrics.track_session_start()
+
     print(f"\n✓ User: {user_id}")
     print(f"✓ Session ID: {thread_id}")
+    if langsmith_enabled:
+        print(f"✓ LangSmith Tracing: Enabled")
     print("\nCommands:")
     print("  - Type your message to interact with the agent")
     print("  - Type 'quit', 'exit', or 'q' to exit")
+    print("  - Type 'metrics' to see performance summary")
     print("=" * 60)
     print()
 
@@ -75,8 +112,15 @@ def run_agent(user_id=None):
 
         # Check for exit commands
         if user_input.lower() in ["quit", "exit", "q"]:
-            print("\n👋 Goodbye!\n")
+            print("\n👋 Goodbye!")
+            # Show metrics summary on exit
+            metrics.print_summary()
             break
+
+        # Check for metrics command
+        if user_input.lower() == "metrics":
+            metrics.print_summary()
+            continue
 
         # Skip empty input
         if not user_input:
@@ -86,12 +130,26 @@ def run_agent(user_id=None):
         state["messages"].append(HumanMessage(content=user_input))
 
         try:
+            # Track response time
+            start_time = time.time()
+
             # Run the graph with thread_id for persistence
             # This executes the agent loop and returns final state
+            # LangSmith automatically traces this call!
             result = graph.invoke(state, config)
+
+            # Calculate response time
+            duration_ms = (time.time() - start_time) * 1000
+            metrics.track_response_time(duration_ms)
 
             # Update our state with the result
             state = result
+
+            # Track tool usage (scan messages for tool calls)
+            for msg in state["messages"]:
+                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                    for tool_call in msg.tool_calls:
+                        metrics.track_tool_call(tool_call["name"])
 
             # Get the last message (agent's response)
             last_message = state["messages"][-1]
@@ -104,6 +162,12 @@ def run_agent(user_id=None):
 
         except Exception as e:
             print(f"\n❌ Error: {str(e)}\n")
+            # Track the error
+            metrics.track_error(
+                error_type=type(e).__name__,
+                error_msg=str(e),
+                context={"user_id": user_id, "thread_id": thread_id}
+            )
             # Don't crash - let user continue or quit
 
 
