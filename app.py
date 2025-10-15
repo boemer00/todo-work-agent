@@ -11,19 +11,26 @@ FEATURES:
 
 USAGE:
     python app.py
+    python app.py --user <username>
 """
 
 import time
+import argparse
+import getpass
 from langchain_core.messages import HumanMessage
 from agent.graph import create_graph
 
 
-def run_agent():
+def run_agent(user_id=None):
     """
     Run the agent in an interactive CLI loop.
 
+    Args:
+        user_id: Optional user ID for multi-user support.
+                 If not provided, auto-detected from system username.
+
     Features:
-    - Prompts for user ID (for multi-user support)
+    - Auto-detects user ID from system username
     - Generates unique thread ID for conversation tracking
     - Maintains conversation context across messages
     - Supports conversation resumption via thread_id
@@ -31,12 +38,16 @@ def run_agent():
     # Create the graph (includes checkpointing)
     graph = create_graph()
 
-    # Prompt for user ID
+    # Auto-detect user ID if not provided
+    if user_id is None:
+        try:
+            user_id = getpass.getuser()
+        except Exception:
+            user_id = "default"
+
     print("=" * 60)
     print("🤖 To-Do Agent with Persistence")
     print("=" * 60)
-    user_id = input("\nEnter your user ID (or press Enter for 'default'): ").strip()
-    user_id = user_id or "default"
 
     # Generate unique thread ID for this conversation
     # Format: {user_id}_session_{timestamp}
@@ -97,4 +108,22 @@ def run_agent():
 
 
 if __name__ == "__main__":
-    run_agent()
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="To-Do Agent with Persistence",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python app.py                    # Auto-detect user from system
+  python app.py --user alice       # Specify user explicitly
+        """
+    )
+    parser.add_argument(
+        "--user",
+        type=str,
+        default=None,
+        help="User ID for multi-user support (default: auto-detect from system)"
+    )
+
+    args = parser.parse_args()
+    run_agent(user_id=args.user)
