@@ -99,6 +99,7 @@ def run_agent(user_id=None):
     print("  - Type your message to interact with the agent")
     print("  - Type 'quit', 'exit', or 'q' to exit")
     print("  - Type 'metrics' to see performance summary")
+    print("  - Type 'dashboard' to see full performance dashboard")
     print("=" * 60)
     print()
 
@@ -122,6 +123,12 @@ def run_agent(user_id=None):
             metrics.print_summary()
             continue
 
+        # Check for dashboard command
+        if user_input.lower() == "dashboard":
+            from monitoring.performance_dashboard import display_dashboard
+            display_dashboard()
+            continue
+
         # Skip empty input
         if not user_input:
             continue
@@ -133,10 +140,25 @@ def run_agent(user_id=None):
             # Track response time
             start_time = time.time()
 
-            # Run the graph with thread_id for persistence
-            # This executes the agent loop and returns final state
-            # LangSmith automatically traces this call!
-            result = graph.invoke(state, config)
+            # Stream the graph execution to show live progress
+            # This makes 2.56s feel instant by providing immediate feedback
+            # stream_mode="values" returns the FULL STATE after each node
+            final_state = None
+            step = 0
+            for event in graph.stream(state, config, stream_mode="values"):
+                step += 1
+                # Show animated progress indicator
+                spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+                print(f"\r{spinner[step % len(spinner)]} Agent working...", end="", flush=True)
+
+                # Keep the last event (this IS the full state with stream_mode="values")
+                final_state = event
+
+            # Clear the status line
+            print("\r" + " "*25 + "\r", end="", flush=True)
+
+            # Use the final state as result (now has correct structure)
+            result = final_state if final_state else state
 
             # Calculate response time
             duration_ms = (time.time() - start_time) * 1000
@@ -156,9 +178,9 @@ def run_agent(user_id=None):
 
             # Print agent response
             if hasattr(last_message, "content") and last_message.content:
-                print(f"\n🤖 Agent: {last_message.content}\n")
+                print(f"🤖 Agent: {last_message.content}\n")
             else:
-                print("\n🤖 Agent: [No response]\n")
+                print("🤖 Agent: [No response]\n")
 
         except Exception as e:
             print(f"\n❌ Error: {str(e)}\n")
