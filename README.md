@@ -1,14 +1,26 @@
-# To-Do Agent - LangGraph Tutorial
+# 📅 To-Do Agent with Google Calendar Integration
 
-A complete, beginner-friendly tutorial on building a To-Do agent with LangGraph.
+An intelligent to-do list assistant powered by LangGraph and integrated with Google Calendar. This project demonstrates production-ready AI agent development, including natural language processing, external API integration, and conversational AI design.
 
-## 🎯 What You'll Learn
+##⭐ Key Features
 
-- The fundamental concepts of LangGraph (State, Nodes, Edges, Graph)
-- How to build an agent that can use tools
-- The ReAct pattern (Reasoning + Acting)
-- How to create multi-step, intelligent agents
-- Best practices for agent architecture
+- **Natural Language Understanding** - "Remind me to call Gabi tomorrow at 10am" → automatic parsing and scheduling
+- **Google Calendar Integration** - Seamless OAuth 2.0 authentication and event synchronization
+- **Smart Conversational Flow** - Agent asks about scheduling preferences and respects user choices
+- **Multi-User Support** - Isolated task lists per user with persistent storage
+- **Production Patterns** - LangGraph checkpointing, LangSmith observability, graceful error handling
+- **Timezone Aware** - Proper handling of timezones for distributed users
+
+## 🎯 Portfolio Highlights
+
+This project showcases skills relevant to AI Engineering roles:
+
+1. **LangGraph Mastery** - State management, conditional routing, tool calling
+2. **External API Integration** - OAuth 2.0, Google Calendar API, token management
+3. **Natural Language Processing** - Date parsing, intent recognition, conversation design
+4. **Database Design** - Schema evolution, backwards-compatible migrations
+5. **Security Best Practices** - Credential management, gitignore, scope limitation
+6. **Production Mindset** - Error handling, logging, observability, documentation
 
 ## 📁 Files in This Project
 
@@ -29,13 +41,28 @@ pip install -r requirements.txt
 
 ### 2. Set Up Environment
 
-Make sure your `.env` file has your OpenAI API key:
+Create a `.env` file with your API keys:
 
 ```bash
-OPENAI_API_KEY=your_key_here
+OPENAI_API_KEY=your_openai_key_here
+LANGSMITH_API_KEY=your_langsmith_key_here  # Optional, for observability
 ```
 
-### 3. Run the Agent
+### 3. (Optional) Set Up Google Calendar
+
+For calendar integration, follow the setup guide:
+
+👉 **[Google Calendar Setup Guide](docs/GOOGLE_CALENDAR_SETUP.md)**
+
+Quick summary:
+1. Create Google Cloud project
+2. Enable Google Calendar API
+3. Download OAuth credentials as `credentials.json`
+4. Place in project root
+
+**Note**: The agent works perfectly fine without Google Calendar! It will just skip calendar integration and store tasks locally.
+
+### 4. Run the Agent
 
 **Default mode (auto-detects your username):**
 ```bash
@@ -54,33 +81,55 @@ python app.py --help
 
 ## 💬 Example Interactions
 
+### 📅 With Google Calendar Integration
+
 ```
 ============================================================
-🤖 To-Do Agent with Persistence
+🤖 To-Do Agent with Google Calendar Integration
 ============================================================
 
-✓ User: renatoboemer
-✓ Session ID: renatoboemer_session_1760452854
+You: remind me to call Gabi tomorrow at 10am
 
-Commands:
-  - Type your message to interact with the agent
-  - Type 'quit', 'exit', or 'q' to exit
-============================================================
+🤖 Agent: ✓ Reminder set: 'call Gabi' for Tuesday, October 28, 2025 at 10:00 AM
+📅 Added to your Google Calendar!
 
-You: add gym to my list
+You: add buy milk to my list
 
-🤖 Agent: I've added "gym" to your task list!
+🤖 Agent: Would you like me to set a reminder for this? If so, when?
 
-You: what are my tasks?
+You: yes, tonight at 6pm
 
-🤖 Agent: Here are your tasks:
-1. Buy groceries
-2. Write LangGraph tutorial
-3. gym
+🤖 Agent: ✓ Reminder set: 'buy milk' for Monday, October 27, 2025 at 06:00 PM
+📅 Added to your Google Calendar!
 
-You: mark task 3 as done
+You: add finish report
 
-🤖 Agent: Task #3 "gym" has been marked as complete!
+🤖 Agent: Would you like me to set a reminder for this? If so, when?
+
+You: no thanks
+
+🤖 Agent: ✓ Added task #3: 'finish report'
+
+You: show my tasks
+
+🤖 Agent: Your tasks:
+1. call Gabi (Due: 2025-10-28T10:00:00+00:00)
+2. buy milk (Due: 2025-10-27T18:00:00+00:00)
+3. finish report
+
+You: mark task 1 as done
+
+🤖 Agent: ✓ Marked task #1 as done: 'call Gabi'
+📅 Removed from Google Calendar
+```
+
+### 📝 Without Google Calendar (still works!)
+
+```
+You: remind me to call dentist tomorrow at 2pm
+
+🤖 Agent: ✓ Task 'call dentist' added locally.
+⚠️ Google Calendar not configured. See docs/GOOGLE_CALENDAR_SETUP.md
 ```
 
 ## 📚 Learning Path
@@ -127,15 +176,20 @@ This is called the **ReAct pattern** (Reasoning + Acting).
 
 ## 🔧 Tools Included
 
-- `add_task(task: str, user_id: str)` - Add a new task
-- `list_tasks(user_id: str)` - Show all tasks for the user
-- `mark_task_done(task_number: int, user_id: str)` - Mark a task complete
-- `clear_all_tasks(user_id: str)` - Clear all tasks
+- **`create_reminder(task, when, user_id, timezone)`** - Create a scheduled reminder with Google Calendar integration
+- **`add_task(task, user_id)`** - Add a simple task without scheduling
+- **`list_tasks(user_id)`** - Show all tasks (with due dates if scheduled)
+- **`mark_task_done(task_number, user_id)`** - Mark task complete & remove from calendar
+- **`clear_all_tasks(user_id)`** - Clear all tasks
 
 **Features:**
-- SQLite database for persistent task storage
-- Multi-user support (tasks are isolated per user)
-- LangGraph checkpointing for conversation memory
+- 📅 **Google Calendar Integration** - OAuth 2.0 authentication, automatic event sync
+- 🕐 **Natural Language Dates** - Parse "tomorrow at 10am", "next Friday 2pm", "in 3 hours"
+- 💾 **SQLite Database** - Persistent task storage with temporal schema
+- 👥 **Multi-User Support** - Isolated tasks per user
+- 🔄 **LangGraph Checkpointing** - Conversation memory and state persistence
+- 📊 **LangSmith Observability** - Real-time tracing and monitoring
+- 🌍 **Timezone Aware** - Proper handling of user timezones
 
 ## 🚧 Extending the Agent
 
@@ -225,10 +279,63 @@ After mastering this agent:
 - Agents are just **graphs** with **LLM-powered routing**
 - The **ReAct pattern** (agent ↔ tools loop) is powerful and flexible
 - **Start simple**, then add complexity incrementally
-- **Draw your graph first**, then code it
+- **External integrations** require careful error handling and security practices
+
+## 🎤 Interview Preparation
+
+When discussing this project in interviews, highlight these technical decisions:
+
+### Architecture & Design
+- **"Why LangGraph over pure LLM calls?"** - State persistence, checkpointing, complex multi-step flows, built-in tool calling
+- **"How does the agent decide which tool to use?"** - LLM tool calling with clear docstrings and examples in system prompt
+- **"Explain the ReAct pattern"** - Reasoning (LLM thinks) → Acting (execute tools) → Observation (tool results) → repeat until done
+
+### Database & Schema
+- **"How did you handle schema migration?"** - Backwards-compatible ALTER TABLE with NULL defaults, PRAGMA table_info checks
+- **"Why store calendar_event_id?"** - Enables bidirectional sync, prevents duplicate events, allows calendar cleanup when tasks complete
+- **"Why single table vs normalized schema?"** - YAGNI principle, simpler queries, easier to reason about, can normalize later if needed
+
+### Natural Language Processing
+- **"Why dateparser vs asking LLM to parse dates?"** - Deterministic, no hallucinations, < 1ms vs 200ms+, cheaper (no API call)
+- **"What edge cases did you handle?"** - Past dates, ambiguous expressions, timezone issues, invalid input, missing date components
+- **"How do you handle timezone-aware scheduling?"** - Timezone stored per task, dateparser settings, Python datetime with tzinfo
+
+### Google Calendar Integration
+- **"Explain OAuth 2.0 flow"** - Authorization code flow for desktop apps, browser-based consent, token exchange, refresh tokens
+- **"How do you secure credentials?"** - .gitignore, environment variables, token.json with pickle, never commit to git
+- **"What if Calendar API is down?"** - Graceful degradation, task still created locally, clear error message, try-except blocks
+- **"How would you handle rate limiting?"** - Exponential backoff, retry logic, circuit breaker pattern, quota monitoring
+
+### Conversational AI Design
+- **"How do you prevent pushy UX?"** - Ask once, respect "no", don't over-prompt, clear opt-out language
+- **"How did you design the system prompt?"** - Clear guidelines, examples, decision boundaries, tool usage patterns
+- **"What's your testing strategy for LLMs?"** - Unit tests for tools, integration tests for flows, LangSmith evals, human feedback
+
+### Production Considerations
+- **"How would you deploy this?"** - Docker container, cloud functions (AWS Lambda, Google Cloud Run), managed services
+- **"What about scaling?"** - Stateless tools (horizontal scaling), database pooling, calendar API quotas, LLM rate limits
+- **"How do you monitor AI systems?"** - LangSmith tracing, error logging, success rate metrics, latency monitoring
+- **"Security best practices?"** - Credential management, scope limitation, input validation, SQL injection prevention, HTTPS
+
+## 🚀 Next Steps for Portfolio
+
+To make this even more impressive:
+
+1. **Add Tests** - pytest for tools, integration tests for agent flows
+2. **Web UI** - FastAPI backend + React frontend
+3. **Voice Input** - Whisper API for voice-to-text commands
+4. **Bidirectional Sync** - Pull events from Calendar into tasks
+5. **Recurring Reminders** - Support "every Monday at 9am"
+6. **Multi-Calendar** - Support work vs personal calendars
+7. **Team Features** - Shared tasks, permissions, collaboration
+8. **Mobile App** - React Native or Flutter
+9. **Deployment** - Deploy to cloud with CI/CD
+10. **Blog Post** - Write about architecture decisions and learnings
 
 ---
 
 **Happy building! 🚀**
 
-Questions? Check out the course materials or LangGraph docs.
+Built as a portfolio project by [Renato Boemer](https://github.com/boemer00) to demonstrate AI engineering skills.
+
+Questions? Check out the course materials or [LangGraph docs](https://langchain-ai.github.io/langgraph/).
