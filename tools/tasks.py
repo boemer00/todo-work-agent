@@ -47,8 +47,12 @@ def list_tasks(user_id: str) -> str:
 
         task_list = "Your tasks:\n"
         for i, task in enumerate(tasks, 1):
-            task_id, description, done, created_at = task
-            task_list += f"{i}. {description}\n"
+            task_id, description, done, created_at, due_date, calendar_event_id, timezone = task
+            # Show due date if available
+            if due_date:
+                task_list += f"{i}. {description} (Due: {due_date})\n"
+            else:
+                task_list += f"{i}. {description}\n"
 
         return task_list.strip()
     except Exception as e:
@@ -76,7 +80,7 @@ def mark_task_done(task_number: int, user_id: str) -> str:
         if task_number < 1 or task_number > len(tasks):
             return f"❌ Invalid task number. You have {len(tasks)} task(s). Please choose a number between 1 and {len(tasks)}."
 
-        # Get the actual task ID (0-indexed in list)
+        # Unpack all fields (now 7 fields instead of 4)
         task_id = tasks[task_number - 1][0]
         task_description = tasks[task_number - 1][1]
 
