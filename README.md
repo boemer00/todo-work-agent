@@ -19,8 +19,9 @@ This project showcases skills relevant to AI Engineering roles:
 2. **External API Integration** - OAuth 2.0, Google Calendar API, token management
 3. **Natural Language Processing** - Date parsing, intent recognition, conversation design
 4. **Database Design** - Schema evolution, backwards-compatible migrations
-5. **Security Best Practices** - Credential management, gitignore, scope limitation
-6. **Production Mindset** - Error handling, logging, observability, documentation
+5. **Testing & Quality** - 50+ tests, 75% coverage, CI/CD with GitHub Actions
+6. **Security Best Practices** - Credential management, gitignore, scope limitation
+7. **Production Mindset** - Error handling, logging, observability, documentation
 
 ## 📁 Files in This Project
 
@@ -130,6 +131,82 @@ You: remind me to call dentist tomorrow at 2pm
 
 🤖 Agent: ✓ Task 'call dentist' added locally.
 ⚠️ Google Calendar not configured. See docs/GOOGLE_CALENDAR_SETUP.md
+```
+
+## 🧪 Testing
+
+This project includes a comprehensive test suite to ensure reliability and demonstrate production-ready code.
+
+### Run Tests
+
+**Basic test run:**
+```bash
+pytest
+```
+
+**With coverage report:**
+```bash
+pytest --cov
+```
+
+**Run specific test categories:**
+```bash
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py           # Shared fixtures and test configuration
+├── test_database.py      # Database/Repository tests (14 tests)
+├── test_date_parser.py   # Date parsing utility tests (13 tests)
+├── test_tools.py         # Tool function tests (15 tests)
+└── test_agent_flows.py   # Integration tests for agent (8 tests)
+```
+
+### Test Coverage
+
+- **50+ tests** covering core functionality
+- **~75% code coverage** on agent, database, tools, and utils modules
+- **Mocked external APIs** (Google Calendar, OpenAI) for fast, reliable tests
+- **Isolated test databases** using in-memory SQLite
+
+### Continuous Integration
+
+Tests run automatically on every push via GitHub Actions:
+- Tests on Python 3.9, 3.10, and 3.11
+- Coverage reporting
+- Automatic test results in pull requests
+
+### Key Testing Patterns
+
+**Fixtures for Test Isolation:**
+```python
+@pytest.fixture
+def task_repo(test_db_path):
+    """Provide isolated test database."""
+    return TaskRepository(db_path=test_db_path)
+```
+
+**Mocking External APIs:**
+```python
+@pytest.fixture
+def mock_google_calendar(mocker):
+    """Mock Google Calendar to avoid external calls."""
+    mock = mocker.patch('tools.google_calendar.create_calendar_event')
+    mock.return_value = "mock_event_id"
+    return mock
+```
+
+**Time-Based Testing:**
+```python
+@freeze_time("2025-01-15 10:00:00")
+def test_parse_tomorrow():
+    """Test with frozen time for predictable results."""
+    result = parse_natural_language_date("tomorrow at 10am")
+    assert result.day == 16
 ```
 
 ## 📚 Learning Path
