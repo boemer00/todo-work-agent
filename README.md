@@ -19,7 +19,7 @@ This project showcases skills relevant to AI Engineering roles:
 2. **External API Integration** - OAuth 2.0, Google Calendar API, token management
 3. **Natural Language Processing** - Date parsing, intent recognition, conversation design
 4. **Database Design** - Schema evolution, backwards-compatible migrations
-5. **Testing & Quality** - 50+ tests, 75% coverage, CI/CD with GitHub Actions
+5. **Testing & Quality** - 50 tests, 64% coverage, CI/CD with GitHub Actions
 6. **Security Best Practices** - Credential management, gitignore, scope limitation
 7. **Production Mindset** - Error handling, logging, observability, documentation
 
@@ -168,10 +168,11 @@ tests/
 
 ### Test Coverage
 
-- **50+ tests** covering core functionality
-- **~75% code coverage** on agent, database, tools, and utils modules
+- **50 tests** covering core functionality
+- **64% code coverage** on agent, database, tools, and utils modules
 - **Mocked external APIs** (Google Calendar, OpenAI) for fast, reliable tests
 - **Isolated test databases** using in-memory SQLite
+- **Fast test suite** - all tests run in under 3 seconds
 
 ### Continuous Integration
 

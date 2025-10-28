@@ -90,12 +90,12 @@ def mock_google_calendar(mocker):
 
     Returns a mock that simulates successful calendar event creation.
     """
-    # Mock the create_calendar_event function
-    mock_create = mocker.patch('tools.google_calendar.create_calendar_event')
+    # Mock where the functions are USED, not where they're defined
+    mock_create = mocker.patch('tools.tasks.create_calendar_event')
     mock_create.return_value = "mock_event_id_123"
 
     # Mock the delete_calendar_event function
-    mock_delete = mocker.patch('tools.google_calendar.delete_calendar_event')
+    mock_delete = mocker.patch('tools.tasks.delete_calendar_event')
     mock_delete.return_value = True
 
     return {
