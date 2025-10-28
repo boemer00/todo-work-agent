@@ -35,3 +35,11 @@ logs/
 *.log
 .coverage
 htmlcov/
+
+# Docker
+.dockerignore
+*.tar
+
+# Cloud Run / GCP
+.gcloudignore
+gcp-key.json
