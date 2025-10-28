@@ -1,2 +1,10 @@
 -r requirements.txt
-pygraphviz
+
+# Testing dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+freezegun>=1.2.2
+
+# Optional: for graph visualization (requires system graphviz)
+# pygraphviz
