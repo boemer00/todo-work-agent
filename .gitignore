@@ -6,6 +6,7 @@ token.json
 
 images/
 tutorials/
+docs/
 
 __pycache__/
 .DS_Store
@@ -28,3 +29,9 @@ venv/
 # Database files (SQLite)
 data/
 *.db
+
+# Logs
+logs/
+*.log
+.coverage
+htmlcov/
