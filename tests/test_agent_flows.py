@@ -54,7 +54,7 @@ class TestAgentFlows:
     def test_agent_add_task_flow(self, task_repo, test_user_id, mocker):
         """Test tool execution flow for adding a task."""
         # Patch the task repository
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Import and directly call the add_task tool (simulating what agent would do)
         from tools.tasks import add_task
@@ -69,7 +69,7 @@ class TestAgentFlows:
 
     def test_agent_list_tasks_flow(self, task_repo, test_user_id, mocker):
         """Test tool execution flow for listing tasks."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Pre-create some tasks
         task_repo.create_task(test_user_id, "Task 1")
@@ -86,7 +86,7 @@ class TestAgentFlows:
 
     def test_agent_multi_turn_conversation(self, task_repo, test_user_id, mocker):
         """Test multi-turn workflow: add task then mark it done."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         from tools.tasks import add_task, mark_task_done
 

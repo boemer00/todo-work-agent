@@ -25,7 +25,7 @@ class TestAddTask:
     def test_add_task_success(self, task_repo, test_user_id, mocker):
         """Test adding a task successfully."""
         # Patch the global task_repo in the tools module
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = add_task(task="Buy groceries", user_id=test_user_id)
 
@@ -39,7 +39,7 @@ class TestAddTask:
 
     def test_add_task_multiple(self, task_repo, test_user_id, mocker):
         """Test adding multiple tasks."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         add_task(task="Task 1", user_id=test_user_id)
         add_task(task="Task 2", user_id=test_user_id)
@@ -55,7 +55,7 @@ class TestListTasks:
 
     def test_list_tasks_empty(self, task_repo, test_user_id, mocker):
         """Test listing tasks when none exist."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = list_tasks(user_id=test_user_id)
 
@@ -63,7 +63,7 @@ class TestListTasks:
 
     def test_list_tasks_with_items(self, task_repo, test_user_id, sample_tasks, mocker):
         """Test listing multiple tasks."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create tasks
         for task in sample_tasks:
@@ -77,7 +77,7 @@ class TestListTasks:
 
     def test_list_tasks_with_due_dates(self, task_repo, test_user_id, mocker):
         """Test listing tasks shows due dates when present."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create task with due date
         task_repo.create_task(
@@ -98,7 +98,7 @@ class TestMarkTaskDone:
 
     def test_mark_task_done_success(self, task_repo, test_user_id, mocker):
         """Test marking a task as done successfully."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create a task
         task_repo.create_task(test_user_id, "Test task")
@@ -115,7 +115,7 @@ class TestMarkTaskDone:
 
     def test_mark_task_done_invalid_number(self, task_repo, test_user_id, mocker):
         """Test marking task with invalid task number."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create one task
         task_repo.create_task(test_user_id, "Test task")
@@ -127,7 +127,7 @@ class TestMarkTaskDone:
 
     def test_mark_task_done_no_tasks(self, task_repo, test_user_id, mocker):
         """Test marking task done when no tasks exist."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = mark_task_done(task_number=1, user_id=test_user_id)
 
@@ -137,7 +137,7 @@ class TestMarkTaskDone:
         self, task_repo, test_user_id, mock_google_calendar, mocker
     ):
         """Test marking done a task that has a calendar event."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create task with calendar event ID
         task_id = task_repo.create_task(test_user_id, "Task with calendar")
@@ -156,7 +156,7 @@ class TestClearAllTasks:
 
     def test_clear_all_tasks_success(self, task_repo, test_user_id, sample_tasks, mocker):
         """Test clearing all tasks."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create tasks
         for task in sample_tasks:
@@ -173,7 +173,7 @@ class TestClearAllTasks:
 
     def test_clear_all_tasks_empty(self, task_repo, test_user_id, mocker):
         """Test clearing when no tasks exist."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = clear_all_tasks(user_id=test_user_id)
 
@@ -189,7 +189,7 @@ class TestCreateReminder:
         self, task_repo, test_user_id, mock_google_calendar, mocker
     ):
         """Test creating a reminder successfully."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = create_reminder(
             task="Call dentist",
@@ -213,7 +213,7 @@ class TestCreateReminder:
     @freeze_time("2025-01-15 10:00:00")
     def test_create_reminder_invalid_date(self, task_repo, test_user_id, mocker):
         """Test creating reminder with invalid date."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = create_reminder(
             task="Call dentist",
@@ -227,7 +227,7 @@ class TestCreateReminder:
     @freeze_time("2025-01-15 10:00:00")
     def test_create_reminder_past_date(self, task_repo, test_user_id, mocker):
         """Test creating reminder with past date."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = create_reminder(
             task="Call dentist",
@@ -243,7 +243,7 @@ class TestCreateReminder:
         self, task_repo, test_user_id, mocker
     ):
         """Test creating reminder when Google Calendar is unavailable."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Mock calendar to raise FileNotFoundError (credentials not found)
         mock_create = mocker.patch('tools.tasks.create_calendar_event')
@@ -269,7 +269,7 @@ class TestCreateReminder:
         self, task_repo, test_user_id, mock_google_calendar, mocker
     ):
         """Test creating reminder with specific timezone."""
-        mocker.patch('tools.tasks.task_repo', task_repo)
+        mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         result = create_reminder(
             task="Team meeting",

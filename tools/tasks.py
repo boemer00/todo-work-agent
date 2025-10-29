@@ -14,9 +14,6 @@ from utils.date_parser import (
 )
 from tools.google_calendar import create_calendar_event, delete_calendar_event
 
-# Initialize the task repository (shared across all tool calls)
-task_repo = TaskRepository()
-
 
 def create_reminder(task: str, when: str, user_id: str, timezone: str = "UTC") -> str:
     """
@@ -39,6 +36,9 @@ def create_reminder(task: str, when: str, user_id: str, timezone: str = "UTC") -
         "✓ Reminder set: 'call Gabi' for Tuesday, October 28, 2025 at 10:00 AM"
     """
     try:
+        # Create repository instance for this tool call
+        repo = TaskRepository()
+
         # Parse the date/time from the 'when' parameter
         from utils.date_parser import parse_natural_language_date
 
@@ -52,7 +52,7 @@ def create_reminder(task: str, when: str, user_id: str, timezone: str = "UTC") -
             return f"❌ That time is in the past! Please specify a future date/time."
 
         # Create task in database with due_date
-        task_id = task_repo.create_task(
+        task_id = repo.create_task(
             user_id=user_id,
             description=task,
             due_date=datetime_to_iso(parsed_dt),
@@ -68,7 +68,7 @@ def create_reminder(task: str, when: str, user_id: str, timezone: str = "UTC") -
 
         # If calendar creation succeeded, update task with event ID
         if calendar_event_id:
-            task_repo.update_calendar_event_id(task_id, user_id, calendar_event_id)
+            repo.update_calendar_event_id(task_id, user_id, calendar_event_id)
             return (
                 f"✓ Reminder set: '{task}' for {format_datetime_for_display(parsed_dt)}\n"
                 f"📅 Added to your Google Calendar!"
@@ -105,7 +105,9 @@ def add_task(task: str, user_id: str) -> str:
         Confirmation message with the task ID
     """
     try:
-        task_id = task_repo.create_task(user_id, task)
+        # Create repository instance for this tool call
+        repo = TaskRepository()
+        task_id = repo.create_task(user_id, task)
         return f"✓ Added task #{task_id}: '{task}'"
     except Exception as e:
         return f"❌ Error adding task: {str(e)}"
@@ -122,7 +124,9 @@ def list_tasks(user_id: str) -> str:
         String representation of all incomplete tasks
     """
     try:
-        tasks = task_repo.get_user_tasks(user_id, done=False)
+        # Create repository instance for this tool call
+        repo = TaskRepository()
+        tasks = repo.get_user_tasks(user_id, done=False)
 
         if not tasks:
             return "You have no tasks! 🎉"
@@ -155,8 +159,11 @@ def mark_task_done(task_number: int, user_id: str) -> str:
         Confirmation message
     """
     try:
+        # Create repository instance for this tool call
+        repo = TaskRepository()
+
         # Get current tasks to find the actual task ID
-        tasks = task_repo.get_user_tasks(user_id, done=False)
+        tasks = repo.get_user_tasks(user_id, done=False)
 
         if not tasks:
             return "❌ You have no tasks to mark as done."
@@ -170,7 +177,7 @@ def mark_task_done(task_number: int, user_id: str) -> str:
         calendar_event_id = tasks[task_number - 1][5]  # Index 5 is calendar_event_id
 
         # Mark it as done in database
-        success = task_repo.mark_task_done(task_id, user_id)
+        success = repo.mark_task_done(task_id, user_id)
 
         if not success:
             return "❌ Failed to mark task as done."
@@ -206,7 +213,9 @@ def clear_all_tasks(user_id: str) -> str:
         Confirmation message with count of deleted tasks
     """
     try:
-        count = task_repo.clear_all_tasks(user_id)
+        # Create repository instance for this tool call
+        repo = TaskRepository()
+        count = repo.clear_all_tasks(user_id)
 
         if count == 0:
             return "You had no tasks to clear."
