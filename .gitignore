@@ -6,7 +6,6 @@ token.json
 
 images/
 tutorials/
-docs/
 
 __pycache__/
 .DS_Store
