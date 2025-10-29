@@ -83,16 +83,59 @@ def get_tools():
     """
     Get all available tools for the agent.
 
+    Converts plain functions into StructuredTool instances with Pydantic schemas
+    for better type safety and LLM understanding.
+
     Note: We import tools here to avoid circular imports.
     The tools need user_id from state, which is passed automatically
     by LangGraph's ToolNode.
 
     Returns:
-        List of tool functions
+        List of StructuredTool instances with Pydantic validation
     """
+    from langchain_core.tools import StructuredTool
     from tools.tasks import add_task, list_tasks, mark_task_done, clear_all_tasks, create_reminder
+    from tools.schemas import (
+        CreateReminderInput,
+        AddTaskInput,
+        ListTasksInput,
+        MarkTaskDoneInput,
+        ClearAllTasksInput
+    )
 
-    return [add_task, list_tasks, mark_task_done, clear_all_tasks, create_reminder]
+    # Convert functions to StructuredTool instances with Pydantic schemas
+    return [
+        StructuredTool.from_function(
+            func=create_reminder,
+            name="create_reminder",
+            description=create_reminder.__doc__,
+            args_schema=CreateReminderInput
+        ),
+        StructuredTool.from_function(
+            func=add_task,
+            name="add_task",
+            description=add_task.__doc__,
+            args_schema=AddTaskInput
+        ),
+        StructuredTool.from_function(
+            func=list_tasks,
+            name="list_tasks",
+            description=list_tasks.__doc__,
+            args_schema=ListTasksInput
+        ),
+        StructuredTool.from_function(
+            func=mark_task_done,
+            name="mark_task_done",
+            description=mark_task_done.__doc__,
+            args_schema=MarkTaskDoneInput
+        ),
+        StructuredTool.from_function(
+            func=clear_all_tasks,
+            name="clear_all_tasks",
+            description=clear_all_tasks.__doc__,
+            args_schema=ClearAllTasksInput
+        ),
+    ]
 
 
 def get_llm_with_tools():
