@@ -5,6 +5,7 @@ Contains the Task class that handles all CRUD operations for tasks.
 """
 
 import sqlite3
+from contextlib import contextmanager
 from typing import List, Tuple, Optional
 from .connection import get_db_path
 
@@ -27,6 +28,33 @@ class TaskRepository:
         self.db_path = db_path or get_db_path("tasks.db")
         self._init_db()
 
+    @contextmanager
+    def get_connection(self):
+        """
+        Context manager for database connections.
+
+        Provides automatic transaction management:
+        - Commits on success
+        - Rolls back on exception
+        - Always closes connection
+
+        This prioritizes simplicity and thread-safety over micro-optimization.
+        SQLite connection overhead (~1ms) is negligible compared to LLM
+        latency (~500ms) in this application.
+
+        Yields:
+            sqlite3.Connection: Database connection
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def _init_db(self):
         """
         Initialize the database schema.
@@ -34,42 +62,38 @@ class TaskRepository:
         Creates the tasks table if it doesn't exist.
         Includes migration logic for existing databases.
         """
-        conn = sqlite3.connect(self.db_path)
+        with self.get_connection() as conn:
+            # Create table with new schema (for new databases)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    done BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    due_date TIMESTAMP,
+                    calendar_event_id TEXT,
+                    timezone TEXT DEFAULT 'UTC'
+                )
+            """)
 
-        # Create table with new schema (for new databases)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                description TEXT NOT NULL,
-                done BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                due_date TIMESTAMP,
-                calendar_event_id TEXT,
-                timezone TEXT DEFAULT 'UTC'
-            )
-        """)
+            # Migrate existing databases (add columns if they don't exist)
+            # This is backwards-compatible and safe to run multiple times
+            cursor = conn.cursor()
 
-        # Migrate existing databases (add columns if they don't exist)
-        # This is backwards-compatible and safe to run multiple times
-        cursor = conn.cursor()
+            # Check existing columns
+            cursor.execute("PRAGMA table_info(tasks)")
+            existing_columns = {row[1] for row in cursor.fetchall()}
 
-        # Check existing columns
-        cursor.execute("PRAGMA table_info(tasks)")
-        existing_columns = {row[1] for row in cursor.fetchall()}
+            # Add missing columns with NULL defaults (backwards compatible)
+            if 'due_date' not in existing_columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN due_date TIMESTAMP")
 
-        # Add missing columns with NULL defaults (backwards compatible)
-        if 'due_date' not in existing_columns:
-            conn.execute("ALTER TABLE tasks ADD COLUMN due_date TIMESTAMP")
+            if 'calendar_event_id' not in existing_columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN calendar_event_id TEXT")
 
-        if 'calendar_event_id' not in existing_columns:
-            conn.execute("ALTER TABLE tasks ADD COLUMN calendar_event_id TEXT")
-
-        if 'timezone' not in existing_columns:
-            conn.execute("ALTER TABLE tasks ADD COLUMN timezone TEXT DEFAULT 'UTC'")
-
-        conn.commit()
-        conn.close()
+            if 'timezone' not in existing_columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN timezone TEXT DEFAULT 'UTC'")
 
     def create_task(
         self,
@@ -90,16 +114,14 @@ class TaskRepository:
         Returns:
             The ID of the newly created task
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO tasks (user_id, description, done, due_date, timezone) VALUES (?, ?, ?, ?, ?)",
-            (user_id, description, False, due_date, timezone)
-        )
-        task_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return task_id
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO tasks (user_id, description, done, due_date, timezone) VALUES (?, ?, ?, ?, ?)",
+                (user_id, description, False, due_date, timezone)
+            )
+            task_id = cursor.lastrowid
+            return task_id
 
     def get_user_tasks(self, user_id: str, done: bool = False) -> List[Tuple]:
         """
@@ -112,15 +134,14 @@ class TaskRepository:
         Returns:
             List of tuples: (id, description, done, created_at, due_date, calendar_event_id, timezone)
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE user_id = ? AND done = ? ORDER BY created_at",
-            (user_id, done)
-        )
-        tasks = cursor.fetchall()
-        conn.close()
-        return tasks
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE user_id = ? AND done = ? ORDER BY created_at",
+                (user_id, done)
+            )
+            tasks = cursor.fetchall()
+            return tasks
 
     def mark_task_done(self, task_id: int, user_id: str) -> bool:
         """
@@ -133,16 +154,14 @@ class TaskRepository:
         Returns:
             True if successful, False if task not found or doesn't belong to user
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE tasks SET done = 1 WHERE id = ? AND user_id = ?",
-            (task_id, user_id)
-        )
-        rows_affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return rows_affected > 0
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE tasks SET done = 1 WHERE id = ? AND user_id = ?",
+                (task_id, user_id)
+            )
+            rows_affected = cursor.rowcount
+            return rows_affected > 0
 
     def clear_all_tasks(self, user_id: str) -> int:
         """
@@ -154,13 +173,11 @@ class TaskRepository:
         Returns:
             Number of tasks deleted
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
-        rows_affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return rows_affected
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
+            rows_affected = cursor.rowcount
+            return rows_affected
 
     def update_calendar_event_id(self, task_id: int, user_id: str, calendar_event_id: str) -> bool:
         """
@@ -174,16 +191,14 @@ class TaskRepository:
         Returns:
             True if successful, False if task not found or doesn't belong to user
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE tasks SET calendar_event_id = ? WHERE id = ? AND user_id = ?",
-            (calendar_event_id, task_id, user_id)
-        )
-        rows_affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return rows_affected > 0
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE tasks SET calendar_event_id = ? WHERE id = ? AND user_id = ?",
+                (calendar_event_id, task_id, user_id)
+            )
+            rows_affected = cursor.rowcount
+            return rows_affected > 0
 
     def get_scheduled_tasks(self, user_id: str, done: bool = False) -> List[Tuple]:
         """
@@ -197,15 +212,14 @@ class TaskRepository:
             List of tuples: (id, description, done, created_at, due_date, calendar_event_id, timezone)
             Ordered by due_date ascending (earliest first)
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE user_id = ? AND done = ? AND due_date IS NOT NULL ORDER BY due_date",
-            (user_id, done)
-        )
-        tasks = cursor.fetchall()
-        conn.close()
-        return tasks
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE user_id = ? AND done = ? AND due_date IS NOT NULL ORDER BY due_date",
+                (user_id, done)
+            )
+            tasks = cursor.fetchall()
+            return tasks
 
     def get_task_by_id(self, task_id: int, user_id: str) -> Optional[Tuple]:
         """
@@ -219,12 +233,11 @@ class TaskRepository:
             Tuple: (id, description, done, created_at, due_date, calendar_event_id, timezone)
             or None if not found
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE id = ? AND user_id = ?",
-            (task_id, user_id)
-        )
-        task = cursor.fetchone()
-        conn.close()
-        return task
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, description, done, created_at, due_date, calendar_event_id, timezone FROM tasks WHERE id = ? AND user_id = ?",
+                (task_id, user_id)
+            )
+            task = cursor.fetchone()
+            return task
