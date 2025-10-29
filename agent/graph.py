@@ -32,7 +32,18 @@ def create_graph():
     # This saves the entire state after each node execution
     import sqlite3
     checkpoint_db_path = get_db_path("checkpoints.db")
-    conn = sqlite3.connect(checkpoint_db_path, check_same_thread=False)
+
+    # Thread-safe SQLite configuration for concurrent FastAPI requests
+    # - check_same_thread=False: Allow connection use across threads (required for ThreadPoolExecutor)
+    # - timeout=10.0: Wait up to 10 seconds for lock instead of failing immediately
+    # - WAL mode: SQLite's Write-Ahead Logging enables concurrent readers + serialized writers
+    conn = sqlite3.connect(
+        checkpoint_db_path,
+        check_same_thread=False,
+        timeout=10.0
+    )
+    conn.execute("PRAGMA journal_mode=WAL")  # Enable WAL mode for thread safety
+
     memory = SqliteSaver(conn)
 
     # Initialize graph with our State schema
