@@ -123,16 +123,54 @@ async def whatsapp_webhook(request: Request):
 
     logger.info(f"Processing message from {from_number}")
 
-    # Process message through agent
+    # Get Twilio client and phone number
+    twilio_client = getattr(request.app.state, 'twilio_client', None)
+    twilio_phone = os.getenv("TWILIO_WHATSAPP_NUMBER")
+
+    # If Twilio client is available, send acknowledgment + response via Messages API
+    if twilio_client and twilio_phone:
+        try:
+            # Send instant acknowledgment (< 100ms)
+            twilio_client.messages.create(
+                from_=twilio_phone,
+                to=from_number,
+                body="Working on it."
+            )
+            logger.info(f"Acknowledgment sent to {from_number}")
+
+            # Process message through agent (5-10 seconds)
+            response_text = await process_whatsapp_message(
+                message=incoming_msg,
+                user_phone=from_number
+            )
+
+            # Send actual response
+            twilio_client.messages.create(
+                from_=twilio_phone,
+                to=from_number,
+                body=response_text
+            )
+            logger.info(f"Response sent to {from_number}")
+
+            # Return 200 OK to acknowledge webhook
+            return Response(status_code=200, content="OK")
+
+        except Exception as e:
+            logger.error(f"Failed to send messages via Messages API: {e}")
+            # Fall through to TwiML fallback below
+
+    # Fallback to TwiML if Twilio client not available or Messages API failed
+    logger.warning("Using TwiML fallback (no acknowledgment message)")
+
+    # Process message
     response_text = await process_whatsapp_message(
         message=incoming_msg,
         user_phone=from_number
     )
 
-    # Create Twilio response
+    # Return TwiML response
     resp = MessagingResponse()
     resp.message(response_text)
-
     return Response(content=str(resp), media_type="application/xml")
 
 

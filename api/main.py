@@ -18,6 +18,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import redis
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client as TwilioClient
 
 from api.routes import whatsapp, health
 from database.cloud_storage import (
@@ -138,6 +139,17 @@ app = FastAPI(
 # Add rate limiter and Redis client to app state
 app.state.limiter = limiter
 app.state.redis_client = redis_client  # Expose Redis client for manual rate limiting
+
+# Initialize Twilio client for sending messages programmatically
+try:
+    app.state.twilio_client = TwilioClient(
+        os.getenv("TWILIO_ACCOUNT_SID"),
+        os.getenv("TWILIO_AUTH_TOKEN")
+    )
+    logger.info("Twilio client initialized successfully")
+except Exception as e:
+    logger.warning(f"Failed to initialize Twilio client: {e}")
+    app.state.twilio_client = None
 
 # Add rate limit exception handler
 @app.exception_handler(RateLimitExceeded)
