@@ -62,7 +62,9 @@ async def whatsapp_webhook(request: Request):
     """
     Receives messages from Twilio WhatsApp.
 
-    Security: Verifies Twilio signature to prevent unauthorized access.
+    Security:
+    - Verifies Twilio signature to prevent unauthorized access
+    - Rate limits by phone number (10 messages/minute per user)
 
     Args:
         request: FastAPI request containing form data from Twilio
@@ -72,10 +74,41 @@ async def whatsapp_webhook(request: Request):
 
     Raises:
         HTTPException: 403 if Twilio signature verification fails
+        RateLimitExceeded: 429 if user exceeds rate limit
     """
-    # Parse form data from Twilio
+    # Parse form data from Twilio (MUST be read first, can only read once!)
     form_data = await request.form()
     form_dict = dict(form_data)  # Convert to dict for validator
+
+    # Extract phone number for rate limiting
+    from_number = str(form_data.get("From", "unknown"))
+
+    # Apply rate limit (10 messages per minute per phone number)
+    # Using raw Redis commands for simplicity (bypassing SlowAPI)
+    redis_client = getattr(request.app.state, 'redis_client', None)
+
+    if redis_client:
+        rate_limit_key = f"ratelimit:whatsapp:{from_number}"
+
+        try:
+            # Increment counter (atomic operation)
+            count = redis_client.incr(rate_limit_key)
+
+            # Set TTL on first request (60 seconds)
+            if count == 1:
+                redis_client.expire(rate_limit_key, 60)
+
+            # Check if rate limit exceeded
+            if count > 10:
+                from slowapi.errors import RateLimitExceeded
+                raise RateLimitExceeded("Rate limit exceeded")
+
+        except RateLimitExceeded:
+            # Re-raise rate limit errors to be handled by exception handler
+            raise
+        except Exception as e:
+            # Log Redis errors but don't block the request
+            logger.warning(f"Rate limiting error (continuing anyway): {e}")
 
     # Verify Twilio signature for security
     if not verify_twilio_signature(request, form_dict):
@@ -87,7 +120,6 @@ async def whatsapp_webhook(request: Request):
 
     # Extract message data
     incoming_msg = str(form_data.get("Body", ""))
-    from_number = str(form_data.get("From", ""))
 
     logger.info(f"Processing message from {from_number}")
 
