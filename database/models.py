@@ -6,7 +6,7 @@ Contains the Task class that handles all CRUD operations for tasks.
 
 import sqlite3
 from contextlib import contextmanager
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Generator
 from .connection import get_db_path
 
 
@@ -18,7 +18,7 @@ class TaskRepository:
     Uses SQLite for persistence.
     """
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: Optional[str] = None) -> None:
         """
         Initialize the TaskRepository.
 
@@ -29,7 +29,7 @@ class TaskRepository:
         self._init_db()
 
     @contextmanager
-    def get_connection(self):
+    def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """
         Context manager for database connections.
 
@@ -55,7 +55,7 @@ class TaskRepository:
         finally:
             conn.close()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """
         Initialize the database schema.
 
@@ -121,6 +121,7 @@ class TaskRepository:
                 (user_id, description, False, due_date, timezone)
             )
             task_id = cursor.lastrowid
+            assert task_id is not None, "Failed to create task: lastrowid is None"
             return task_id
 
     def get_user_tasks(self, user_id: str, done: bool = False) -> List[Tuple]:

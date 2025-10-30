@@ -3,6 +3,7 @@
 import hashlib
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, Any
 from agent.graph import create_graph
 
 # Thread pool for running sync agent code
@@ -46,7 +47,7 @@ async def process_whatsapp_message(message: str, user_phone: str) -> str:
         return f"❌ Oops! Something went wrong: {str(e)}\n\nPlease try again or type 'help' for assistance."
 
 
-def _run_agent_sync(message: str, user_id: str, user_phone: str) -> dict:
+def _run_agent_sync(message: str, user_id: str, user_phone: str) -> Dict[str, Any]:
     """
     Run the agent synchronously in a thread pool.
 

@@ -86,8 +86,8 @@ async def whatsapp_webhook(request: Request):
         )
 
     # Extract message data
-    incoming_msg = form_data.get("Body", "")
-    from_number = form_data.get("From", "")
+    incoming_msg = str(form_data.get("Body", ""))
+    from_number = str(form_data.get("From", ""))
 
     logger.info(f"Processing message from {from_number}")
 

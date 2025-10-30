@@ -1,6 +1,7 @@
 """Health check endpoints."""
 
 import os
+from typing import Dict, Any
 from fastapi import APIRouter
 from database.connection import get_db_path
 
@@ -8,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint for Cloud Run and monitoring.
 
