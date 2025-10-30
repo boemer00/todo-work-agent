@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Enable LangSmith tracing for observability
+from monitoring import setup_langsmith
+setup_langsmith()
+
 from fastapi import FastAPI, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
