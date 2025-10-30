@@ -6,7 +6,12 @@ Handles LLM initialization and tool registration.
 Note: Environment variables are loaded in app.py before this module is imported.
 """
 
+import os
 from langchain_openai import ChatOpenAI
+
+# Default timezone for date parsing and display
+# Users in London, UK should use "Europe/London"
+DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/London")
 
 # System message defining the agent's persona and behavior
 SYSTEM_MESSAGE = """You are a friendly and proactive to-do list assistant with Google Calendar integration. Your goal is to help users stay organized and productive.

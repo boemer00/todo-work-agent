@@ -155,15 +155,25 @@ class TestClearAllTasks:
     """Test suite for clear_all_tasks tool."""
 
     def test_clear_all_tasks_success(self, task_repo, test_user_id, sample_tasks, mocker):
-        """Test clearing all tasks."""
+        """Test clearing all tasks with confirmation flow."""
         mocker.patch('tools.tasks.TaskRepository', return_value=task_repo)
 
         # Create tasks
         for task in sample_tasks:
             task_repo.create_task(test_user_id, task["description"])
 
-        result = clear_all_tasks(user_id=test_user_id)
+        # First call without confirmation - should return confirmation prompt
+        result = clear_all_tasks(user_id=test_user_id, confirmed=False)
+        assert "⚠️" in result
+        assert "3 tasks" in result
+        assert "Are you sure" in result
 
+        # Verify tasks still exist
+        tasks = task_repo.get_user_tasks(test_user_id, done=False)
+        assert len(tasks) == 3
+
+        # Second call with confirmation - should clear tasks
+        result = clear_all_tasks(user_id=test_user_id, confirmed=True)
         assert "✓" in result or "Cleared" in result
         assert "3" in result
 
