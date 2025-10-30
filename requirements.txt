@@ -17,3 +17,5 @@ twilio>=9.3.0
 aiosqlite>=0.20.0
 python-multipart>=0.0.9
 google-cloud-storage>=2.18.0
+slowapi>=0.1.9
+redis>=5.0.0

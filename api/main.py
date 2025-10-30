@@ -1,5 +1,6 @@
 """FastAPI application for WhatsApp integration."""
 
+import os
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -7,7 +8,12 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import redis
+from twilio.twiml.messaging_response import MessagingResponse
 
 from api.routes import whatsapp, health
 from database.cloud_storage import (
@@ -23,6 +29,36 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Initialize Redis for rate limiting (with graceful fallback)
+redis_client = None
+storage_uri = "memory://"  # Default to in-memory for development
+
+if os.getenv("REDIS_URL"):
+    try:
+        redis_client = redis.from_url(
+            os.getenv("REDIS_URL"),
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5
+        )
+        # Test connection
+        redis_client.ping()
+        storage_uri = os.getenv("REDIS_URL")
+        logger.info("Redis connection established successfully")
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e}. Rate limiting will use in-memory storage.")
+        redis_client = None
+        storage_uri = "memory://"
+else:
+    logger.warning("REDIS_URL not set. Rate limiting will use in-memory storage (not recommended for production).")
+
+# Initialize SlowAPI rate limiter
+limiter = Limiter(
+    key_func=get_remote_address,  # Default key function (can be overridden per route)
+    storage_uri=storage_uri,
+    default_limits=[]  # No global limits, only per-route limits
+)
 
 
 @asynccontextmanager
@@ -94,6 +130,34 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Add rate limiter and Redis client to app state
+app.state.limiter = limiter
+app.state.redis_client = redis_client  # Expose Redis client for manual rate limiting
+
+# Add rate limit exception handler
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> Response:
+    """
+    Handle rate limit errors with user-friendly TwiML response.
+
+    Returns 429 status with Retry-After header for Twilio.
+    """
+    logger.warning(f"Rate limit exceeded for {request.url}")
+
+    # Create Twilio-compatible response
+    response_obj = MessagingResponse()
+    response_obj.message(
+        "⏱️ You're sending messages too quickly. "
+        "Please wait a moment and try again."
+    )
+
+    return Response(
+        content=str(response_obj),
+        status_code=429,
+        media_type="application/xml",
+        headers={"Retry-After": "60"}
+    )
 
 # Include routers
 app.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
