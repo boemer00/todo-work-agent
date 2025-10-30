@@ -98,8 +98,8 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 # Step 6: Build Docker image
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
-echo -e "${YELLOW}Step 6: Building Docker image...${NC}"
-docker build -t $IMAGE_NAME .
+echo -e "${YELLOW}Step 6: Building Docker image for Cloud Run (amd64)...${NC}"
+docker build --platform linux/amd64 -t $IMAGE_NAME .
 
 # Step 7: Push to Container Registry
 echo -e "${YELLOW}Step 7: Pushing image to Container Registry...${NC}"

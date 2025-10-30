@@ -45,7 +45,13 @@ def verify_twilio_signature(request: Request, form_data: dict) -> bool:
         return False
 
     # Get full URL (Twilio signs the complete URL)
+    # Cloud Run forwards as HTTP internally but Twilio signs with HTTPS
+    # We need to reconstruct the URL using the X-Forwarded-Proto header
     url = str(request.url)
+
+    # Fix protocol for Cloud Run (uses HTTPS externally, HTTP internally)
+    if request.headers.get("X-Forwarded-Proto") == "https" and url.startswith("http://"):
+        url = url.replace("http://", "https://", 1)
 
     # Verify using Twilio's official validator
     validator = RequestValidator(auth_token)
