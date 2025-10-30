@@ -7,7 +7,6 @@ All tools interact with the database through the TaskRepository.
 
 from database.models import TaskRepository
 from utils.date_parser import (
-    extract_date_from_task,
     datetime_to_iso,
     format_datetime_for_display,
     is_date_in_past

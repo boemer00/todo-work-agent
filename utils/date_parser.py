@@ -52,7 +52,7 @@ def parse_natural_language_date(
     }
 
     # Parse the date
-    parsed_date = dateparser.parse(text, settings=settings)
+    parsed_date = dateparser.parse(text, settings=settings)  # type: ignore[arg-type]
 
     # If parsing failed, return None
     if not parsed_date:

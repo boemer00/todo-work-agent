@@ -21,7 +21,7 @@ Security:
 import os
 import pickle
 from datetime import datetime, timedelta
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -38,7 +38,7 @@ CREDENTIALS_PATH = 'credentials.json'
 TOKEN_PATH = 'token.json'
 
 
-def get_calendar_service():
+def get_calendar_service() -> Any:
     """
     Get authenticated Google Calendar service.
 
@@ -135,7 +135,7 @@ def create_calendar_event(
         end_datetime = start_datetime + timedelta(minutes=duration_minutes)
 
         # Get timezone name (handle both pytz and zoneinfo)
-        def get_timezone_name(dt):
+        def get_timezone_name(dt: datetime) -> str:
             """Extract timezone name from datetime object."""
             if dt.tzinfo is None:
                 return 'UTC'
@@ -250,7 +250,7 @@ def update_calendar_event(
     - Fetch-modify-update pattern to preserve other fields
     - Used when task description or time changes
     """
-    def get_timezone_name(dt):
+    def get_timezone_name(dt: datetime) -> str:
         """Extract timezone name from datetime object."""
         if dt.tzinfo is None:
             return 'UTC'

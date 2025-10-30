@@ -6,7 +6,7 @@ Contains the agent node (LLM reasoning) and routing functions.
 
 import time
 import logging
-from typing import Literal
+from typing import Literal, Dict, Any
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage, AIMessage
 from openai import RateLimitError, APIError, APITimeoutError, APIConnectionError, AuthenticationError
@@ -16,7 +16,7 @@ from config.settings import get_llm_with_tools, get_tools, SYSTEM_MESSAGE
 logger = logging.getLogger(__name__)
 
 
-def agent_node(state: State) -> dict:
+def agent_node(state: State) -> Dict[str, Any]:
     """
     The Agent Node: Where the LLM thinks and decides what to do.
 
