@@ -191,6 +191,54 @@ def format_datetime_for_display(dt: datetime) -> str:
     return dt.strftime("%A, %B %d, %Y at %I:%M %p")
 
 
+def format_datetime_relative(dt: datetime, timezone: str = "UTC") -> str:
+    """
+    Format a datetime with relative dates (Today, Tomorrow) when applicable.
+
+    Shows:
+    - "Today at 10:00 AM" for today
+    - "Tomorrow at 10:00 AM" for tomorrow
+    - "Tuesday, 28 Oct at 10:00 AM" for other dates
+    - Adds "⚠️ OVERDUE" prefix if date is in the past
+
+    Args:
+        dt: Timezone-aware datetime object
+        timezone: Timezone for comparison (default: UTC)
+
+    Returns:
+        Human-readable datetime string with relative dates
+
+    Examples:
+        >>> format_datetime_relative(datetime(2025, 10, 28, 10, 0))
+        "Tomorrow at 10:00 AM"
+    """
+    # Get current time in the same timezone as dt
+    tz = pytz.timezone(timezone) if timezone else dt.tzinfo
+    now = datetime.now(tz)
+
+    # Check if overdue
+    is_overdue = dt < now
+    prefix = "⚠️ OVERDUE: " if is_overdue else ""
+
+    # Calculate difference in days (ignoring time)
+    dt_date = dt.date()
+    now_date = now.date()
+    days_diff = (dt_date - now_date).days
+
+    # Format time part
+    time_str = dt.strftime("%I:%M %p").lstrip('0')  # Remove leading zero
+
+    # Format based on relative date
+    if days_diff == 0:
+        return f"{prefix}Today at {time_str}"
+    elif days_diff == 1:
+        return f"{prefix}Tomorrow at {time_str}"
+    else:
+        # Show day name and short date for near future
+        date_str = dt.strftime("%A, %d %b at")
+        return f"{prefix}{date_str} {time_str}"
+
+
 def datetime_to_iso(dt: datetime) -> str:
     """
     Convert datetime to ISO 8601 format string (for database storage).

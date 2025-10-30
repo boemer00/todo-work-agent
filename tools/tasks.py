@@ -9,12 +9,15 @@ from database.models import TaskRepository
 from utils.date_parser import (
     datetime_to_iso,
     format_datetime_for_display,
+    format_datetime_relative,
+    iso_to_datetime,
     is_date_in_past
 )
 from tools.google_calendar import create_calendar_event, delete_calendar_event
+from config.settings import DEFAULT_TIMEZONE
 
 
-def create_reminder(task: str, when: str, user_id: str, timezone: str = "UTC") -> str:
+def create_reminder(task: str, when: str, user_id: str, timezone: str = DEFAULT_TIMEZONE) -> str:
     """
     Create a reminder with a specific date/time and add it to Google Calendar.
 
@@ -132,10 +135,17 @@ def list_tasks(user_id: str) -> str:
 
         task_list = "Your tasks:\n"
         for i, task in enumerate(tasks, 1):
-            task_id, description, done, created_at, due_date, calendar_event_id, timezone = task
+            task_id, description, done, created_at, due_date, calendar_event_id, tz = task
             # Show due date if available
             if due_date:
-                task_list += f"{i}. {description} (Due: {due_date})\n"
+                # Convert ISO string to datetime and format with relative dates
+                try:
+                    dt = iso_to_datetime(due_date)
+                    formatted_date = format_datetime_relative(dt, tz or "UTC")
+                    task_list += f"{i}. {description} (Due: {formatted_date})\n"
+                except Exception:
+                    # Fallback to raw date if parsing fails
+                    task_list += f"{i}. {description} (Due: {due_date})\n"
             else:
                 task_list += f"{i}. {description}\n"
 
@@ -201,24 +211,45 @@ def mark_task_done(task_number: int, user_id: str) -> str:
         return f"❌ Error marking task as done: {str(e)}"
 
 
-def clear_all_tasks(user_id: str) -> str:
+def clear_all_tasks(user_id: str, confirmed: bool = False) -> str:
     """
     Clear all tasks for the user.
 
+    IMPORTANT: This is a destructive action that requires confirmation.
+    - If confirmed=False, returns a confirmation message showing task count
+    - If confirmed=True, proceeds with deletion
+    - Agent should ALWAYS call with confirmed=False first, then call again with confirmed=True only if user explicitly confirms
+
     Args:
         user_id: The ID of the user
+        confirmed: Whether the user has confirmed this destructive action (default: False)
 
     Returns:
-        Confirmation message with count of deleted tasks
+        Confirmation message with count of deleted tasks, or confirmation prompt
     """
     try:
         # Create repository instance for this tool call
         repo = TaskRepository()
+
+        # Check how many tasks exist
+        tasks = repo.get_user_tasks(user_id, done=False)
+        task_count = len(tasks)
+
+        # If no tasks, no confirmation needed
+        if task_count == 0:
+            return "You have no tasks to clear."
+
+        # If not confirmed, return confirmation prompt
+        if not confirmed:
+            if task_count == 1:
+                return "⚠️ This will delete your 1 task. Are you sure you want to clear it?"
+            else:
+                return f"⚠️ This will delete all {task_count} tasks. Are you sure you want to clear them?"
+
+        # User confirmed - proceed with deletion
         count = repo.clear_all_tasks(user_id)
 
-        if count == 0:
-            return "You had no tasks to clear."
-        elif count == 1:
+        if count == 1:
             return "✓ Cleared 1 task!"
         else:
             return f"✓ Cleared {count} tasks!"

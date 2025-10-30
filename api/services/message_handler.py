@@ -38,13 +38,33 @@ async def process_whatsapp_message(message: str, user_phone: str) -> str:
 
         # Extract response from last message
         last_message = result["messages"][-1]
+        response = last_message.content
+
+        # Check if this is the very first interaction by checking message history length
+        # If there are only 2 messages (user input + agent response), it's the first message ever
+        is_first_message = len(result["messages"]) <= 2
+
+        # Prepend welcome message ONLY on the very first interaction
+        if is_first_message:
+            welcome = (
+                "👋 Hi! I'm your task assistant.\n\n"
+                "I can help you:\n"
+                "• Add tasks with natural dates (\"remind me tomorrow at 10am to call John\")\n"
+                "• Show your tasks (\"show my tasks\")\n"
+                "• Mark tasks as done (\"mark task 1 as done\")\n\n"
+            )
+            response = welcome + response
 
         # Format response for WhatsApp
-        return format_for_whatsapp(last_message.content)
+        return format_for_whatsapp(response)
 
     except Exception as e:
-        # Return user-friendly error message
-        return f"❌ Oops! Something went wrong: {str(e)}\n\nPlease try again or type 'help' for assistance."
+        # Log the full error for debugging (will appear in Cloud Run logs)
+        import logging
+        logging.error(f"Error processing message from {user_phone}: {str(e)}", exc_info=True)
+
+        # Return sanitized user-friendly error message (never expose exceptions)
+        return "❌ Something went wrong. Please try again or rephrase your message."
 
 
 def _run_agent_sync(message: str, user_id: str, user_phone: str) -> Dict[str, Any]:
@@ -89,13 +109,29 @@ def format_for_whatsapp(text: str) -> str:
 
     Returns:
         str: Formatted text with WhatsApp markdown
+
+    Note: WhatsApp formatting is very strict:
+    - Needs whitespace or newlines before/after markers
+    - Breaks with adjacent punctuation
+    - We keep formatting minimal to avoid rendering issues
     """
+    import re
+
     # WhatsApp supports:
     # *bold* for bold text
     # _italic_ for italic text
     # ~strikethrough~ for strikethrough
     # ```code``` for monospace
 
-    # For now, return as-is
-    # Can enhance later with emojis and formatting
-    return text
+    # KEEP IT SIMPLE: Only format task numbers at start of line
+    # This is safe because we control the whitespace
+    # Pattern: "1. Task name" -> "*1.* Task name"
+    text = re.sub(r'^(\d+)\.\s', r'*\1.* ', text, flags=re.MULTILINE)
+
+    # Don't format "Due:" dates - too fragile with parentheses and punctuation
+    # The relative dates (Today, Tomorrow) are already human-readable
+
+    # Ensure clean line breaks (remove excessive whitespace but preserve structure)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
