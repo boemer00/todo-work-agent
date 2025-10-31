@@ -137,7 +137,7 @@ git push origin main
 ```
 
 Watch the pipeline run at:
-https://github.com/boemer00/my-agent/actions
+https://github.com/boemer00/todo-work-agent/actions
 
 ---
 
