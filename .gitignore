@@ -42,3 +42,5 @@ htmlcov/
 # Cloud Run / GCP
 .gcloudignore
 gcp-key.json
+github-actions-key.json
+*-key.json

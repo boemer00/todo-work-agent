@@ -1,9 +1,10 @@
 # AI Task Agent - Production Deployment on Google Cloud Run
 
-![Tests](https://img.shields.io/badge/tests-50%20passing-success)
-![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)
-![Python](https://img.shields.io/badge/python-3.11-blue)
-![Deployed](https://img.shields.io/badge/deployed-Google%20Cloud%20Run-blue)
+[![CI/CD Pipeline](https://github.com/boemer00/my-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/boemer00/my-agent/actions/workflows/ci-cd.yml)
+[![Tests](https://img.shields.io/badge/tests-50%20passing-success)](https://github.com/boemer00/my-agent/actions)
+[![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://codecov.io/gh/boemer00/my-agent)
+[![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/downloads/)
+[![Deployed](https://img.shields.io/badge/deployed-Google%20Cloud%20Run-4285F4?logo=google-cloud)](https://ai-task-agent-kbimuakj2a-uc.a.run.app)
 
 An intelligent task management agent deployed on **Google Cloud Run** with **WhatsApp interface**, powered by **LangGraph** and **GPT-4o-mini**. Features natural language date parsing, multi-user support, and Google Calendar integration. Built to demonstrate production-ready AI engineering skills.
 
