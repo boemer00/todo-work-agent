@@ -1,7 +1,7 @@
 # AI Task Agent - Production Deployment on Google Cloud Run
 
 ![Tests](https://img.shields.io/badge/tests-50%20passing-success)
-![Coverage](https://img.shields.io/badge/coverage-64%25-yellow)
+![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Deployed](https://img.shields.io/badge/deployed-Google%20Cloud%20Run-blue)
 

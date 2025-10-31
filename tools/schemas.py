@@ -5,7 +5,7 @@ These schemas provide structured outputs for tool calling, ensuring type safety
 and better LLM understanding of tool parameters.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 
@@ -29,14 +29,14 @@ class CreateReminderInput(BaseModel):
         description="Timezone for the reminder (e.g., 'UTC', 'America/New_York')"
     )
 
-    @validator('task')
+    @field_validator('task')
     def task_not_empty(cls, v):
         """Ensure task description is not empty."""
         if not v or not v.strip():
             raise ValueError("Task description cannot be empty")
         return v.strip()
 
-    @validator('when')
+    @field_validator('when')
     def when_not_empty(cls, v):
         """Ensure date/time is provided."""
         if not v or not v.strip():
@@ -57,7 +57,7 @@ class AddTaskInput(BaseModel):
         description="Unique identifier for the user"
     )
 
-    @validator('task')
+    @field_validator('task')
     def task_not_empty(cls, v):
         """Ensure task description is not empty."""
         if not v or not v.strip():
@@ -88,7 +88,7 @@ class MarkTaskDoneInput(BaseModel):
         description="Unique identifier for the user"
     )
 
-    @validator('task_number')
+    @field_validator('task_number')
     def task_number_positive(cls, v):
         """Ensure task number is positive."""
         if v < 1:
