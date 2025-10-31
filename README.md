@@ -1,8 +1,8 @@
 # AI Task Agent - Production Deployment on Google Cloud Run
 
-[![CI/CD Pipeline](https://github.com/boemer00/my-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/boemer00/my-agent/actions/workflows/ci-cd.yml)
-[![Tests](https://img.shields.io/badge/tests-50%20passing-success)](https://github.com/boemer00/my-agent/actions)
-[![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://codecov.io/gh/boemer00/my-agent)
+[![CI/CD Pipeline](https://github.com/boemer00/todo-work-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/boemer00/todo-work-agent/actions/workflows/ci-cd.yml)
+[![Tests](https://img.shields.io/badge/tests-111%20passing-success)](https://github.com/boemer00/todo-work-agent/actions)
+[![Coverage](https://img.shields.io/badge/coverage-77.3%25-yellow)](https://codecov.io/gh/boemer00/todo-work-agent)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/downloads/)
 [![Deployed](https://img.shields.io/badge/deployed-Google%20Cloud%20Run-4285F4?logo=google-cloud)](https://ai-task-agent-kbimuakj2a-uc.a.run.app)
 
