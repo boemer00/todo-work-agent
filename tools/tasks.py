@@ -255,3 +255,93 @@ def clear_all_tasks(user_id: str, confirmed: bool = False) -> str:
             return f"✓ Cleared {count} tasks!"
     except Exception as e:
         return f"❌ Error clearing tasks: {str(e)}"
+
+
+def list_calendar_events(time_min: str, time_max: str, user_id: str, timezone: str = DEFAULT_TIMEZONE) -> str:
+    """
+    List Google Calendar events within a date range.
+
+    Use this when the user asks about their schedule, calendar, or what's coming up.
+    Shows events from their actual Google Calendar (meetings, appointments, etc.).
+
+    Args:
+        time_min: Start date in natural language (e.g., "today", "monday", "this week")
+        time_max: End date in natural language (e.g., "end of week", "friday", "next monday")
+        user_id: The ID of the user
+        timezone: User's timezone (default: Europe/London)
+
+    Returns:
+        Formatted string with calendar events, or empty message if no events
+
+    Examples:
+        >>> list_calendar_events("today", "end of week", "user123")
+        "Your calendar this week:
+        - Monday 10am: Team standup
+        - Tuesday 2pm: Dentist appointment
+        - Wednesday 3pm: Project review"
+    """
+    from datetime import datetime, timedelta
+    from utils.date_parser import parse_natural_language_date
+    import pytz
+
+    try:
+        # Parse natural language dates
+        tz = pytz.timezone(timezone)
+        now = datetime.now(tz)
+
+        # Parse start date
+        start_dt = parse_natural_language_date(time_min, timezone)
+        if not start_dt:
+            # Fallback: use today
+            start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Parse end date
+        end_dt = parse_natural_language_date(time_max, timezone)
+        if not end_dt:
+            # Fallback: use end of week (Sunday 11:59pm)
+            days_until_sunday = (6 - now.weekday()) % 7
+            end_dt = now + timedelta(days=days_until_sunday)
+            end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Call Google Calendar API
+        from tools.google_calendar import list_calendar_events as get_calendar_events
+        events = get_calendar_events(start_dt, end_dt)
+
+        if not events:
+            return "📅 No calendar events found for this time period."
+
+        # Format events for display
+        result = f"📅 Your calendar ({len(events)} event{'s' if len(events) != 1 else ''}):\n\n"
+
+        for event in events:
+            summary = event['summary']
+            start_time = event['start']
+            location = event['location']
+
+            # Format start time
+            try:
+                if event.get('all_day'):
+                    # All-day event
+                    formatted_time = format_datetime_for_display(iso_to_datetime(start_time))
+                    result += f"• {formatted_time} (All day): {summary}\n"
+                else:
+                    # Regular event with time
+                    start_datetime = iso_to_datetime(start_time)
+                    formatted_time = format_datetime_relative(start_datetime, timezone)
+                    result += f"• {formatted_time}: {summary}\n"
+
+                # Add location if available
+                if location:
+                    result += f"  📍 {location}\n"
+
+            except Exception as parse_error:
+                # Fallback to raw display if parsing fails
+                result += f"• {start_time}: {summary}\n"
+
+        return result.strip()
+
+    except FileNotFoundError:
+        return "⚠️  Google Calendar not configured. I can only show tasks from my local database."
+
+    except Exception as e:
+        return f"❌ Error fetching calendar events: {str(e)}"

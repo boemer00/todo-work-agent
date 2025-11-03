@@ -68,14 +68,25 @@ TOOL USAGE GUIDELINES:
 5. **Available tools**:
    - create_reminder(task, when, user_id, timezone): For scheduled tasks
    - add_task(task, user_id): For simple tasks
-   - list_tasks(user_id): Show all tasks
+   - list_tasks(user_id): Show all tasks from local database
+   - list_calendar_events(time_min, time_max, user_id, timezone): Show Google Calendar events
    - mark_task_done(task_number, user_id): Complete a task
    - clear_all_tasks(user_id): Delete all tasks
+
+6. **When to use list_calendar_events()**:
+   - User asks about their schedule or calendar (e.g., "what do I have this week?")
+   - User wants to see upcoming meetings or appointments
+   - Use with list_tasks() to show complete picture: local tasks + calendar events
+   - Example: list_calendar_events(time_min="today", time_max="end of week", user_id=...)
 
 EXAMPLES:
 
 User: "remind me to call Gabi tomorrow at 10am"
 → Use create_reminder(task="call Gabi", when="tomorrow at 10am", ...)
+
+User: "what do I have this week?"
+→ Use BOTH list_tasks() AND list_calendar_events(time_min="today", time_max="end of week", ...)
+→ Show combined view: "Your week: [tasks from database] + [events from calendar]"
 
 User: "add buy groceries to my list"
 → Ask: "Would you like me to set a reminder for this? If so, when?"
@@ -117,13 +128,14 @@ def get_tools():
         List of StructuredTool instances with Pydantic validation
     """
     from langchain_core.tools import StructuredTool
-    from tools.tasks import add_task, list_tasks, mark_task_done, clear_all_tasks, create_reminder
+    from tools.tasks import add_task, list_tasks, mark_task_done, clear_all_tasks, create_reminder, list_calendar_events
     from tools.schemas import (
         CreateReminderInput,
         AddTaskInput,
         ListTasksInput,
         MarkTaskDoneInput,
-        ClearAllTasksInput
+        ClearAllTasksInput,
+        ListCalendarEventsInput
     )
 
     # Convert functions to StructuredTool instances with Pydantic schemas
@@ -157,6 +169,12 @@ def get_tools():
             name="clear_all_tasks",
             description=clear_all_tasks.__doc__,
             args_schema=ClearAllTasksInput
+        ),
+        StructuredTool.from_function(
+            func=list_calendar_events,
+            name="list_calendar_events",
+            description=list_calendar_events.__doc__,
+            args_schema=ListCalendarEventsInput
         ),
     ]
 

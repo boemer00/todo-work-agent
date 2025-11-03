@@ -105,3 +105,26 @@ class ClearAllTasksInput(BaseModel):
     user_id: str = Field(
         description="Unique identifier for the user"
     )
+
+
+class ListCalendarEventsInput(BaseModel):
+    """
+    Input schema for listing Google Calendar events in a date range.
+
+    Use this when the user asks about their schedule, calendar, or upcoming events.
+    """
+    time_min: str = Field(
+        description="Start date in natural language (e.g., 'today', 'monday', 'this week')",
+        examples=["today", "monday", "this week", "tomorrow"]
+    )
+    time_max: str = Field(
+        description="End date in natural language (e.g., 'end of week', 'friday', 'next monday')",
+        examples=["end of week", "friday", "sunday", "next monday"]
+    )
+    user_id: str = Field(
+        description="Unique identifier for the user"
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="User's timezone (e.g., 'America/New_York', 'Europe/London')"
+    )
