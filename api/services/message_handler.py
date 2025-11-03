@@ -89,7 +89,8 @@ def _run_agent_sync(message: str, user_id: str, user_phone: str) -> Dict[str, An
     # Prepare input state
     state = {
         "messages": [HumanMessage(content=message)],
-        "user_id": user_id
+        "user_id": user_id,
+        "plan_step": 0
     }
 
     # Configure with thread_id for conversation memory
