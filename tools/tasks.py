@@ -5,9 +5,6 @@ These are the functions the LLM can call to manage tasks.
 All tools interact with the database through the TaskRepository.
 """
 
-from typing_extensions import Annotated
-from langgraph.prebuilt import InjectedState
-
 from database.models import TaskRepository
 from utils.date_parser import (
     datetime_to_iso,
@@ -20,7 +17,7 @@ from tools.google_calendar import create_calendar_event, delete_calendar_event
 from config.settings import DEFAULT_TIMEZONE
 
 
-def create_reminder(task: str, when: str, user_id: Annotated[str, InjectedState("user_id")], timezone: str = DEFAULT_TIMEZONE) -> str:
+def create_reminder(task: str, when: str, user_id: str, timezone: str = DEFAULT_TIMEZONE) -> str:
     """
     Create a reminder with a specific date/time and add it to Google Calendar.
 
@@ -95,7 +92,7 @@ def create_reminder(task: str, when: str, user_id: Annotated[str, InjectedState(
         return f"❌ Error creating reminder: {str(e)}"
 
 
-def add_task(task: str, user_id: Annotated[str, InjectedState("user_id")]) -> str:
+def add_task(task: str, user_id: str) -> str:
     """
     Add a new task to the to-do list.
 
@@ -118,7 +115,7 @@ def add_task(task: str, user_id: Annotated[str, InjectedState("user_id")]) -> st
         return f"❌ Error adding task: {str(e)}"
 
 
-def list_tasks(user_id: Annotated[str, InjectedState("user_id")]) -> str:
+def list_tasks(user_id: str) -> str:
     """
     List all current (incomplete) tasks for the user.
 
@@ -157,7 +154,7 @@ def list_tasks(user_id: Annotated[str, InjectedState("user_id")]) -> str:
         return f"❌ Error listing tasks: {str(e)}"
 
 
-def mark_task_done(task_number: int, user_id: Annotated[str, InjectedState("user_id")]) -> str:
+def mark_task_done(task_number: int, user_id: str) -> str:
     """
     Mark a task as completed.
 
@@ -214,7 +211,7 @@ def mark_task_done(task_number: int, user_id: Annotated[str, InjectedState("user
         return f"❌ Error marking task as done: {str(e)}"
 
 
-def clear_all_tasks(user_id: Annotated[str, InjectedState("user_id")], confirmed: bool = False) -> str:
+def clear_all_tasks(user_id: str, confirmed: bool = False) -> str:
     """
     Clear all tasks for the user.
 
@@ -260,7 +257,7 @@ def clear_all_tasks(user_id: Annotated[str, InjectedState("user_id")], confirmed
         return f"❌ Error clearing tasks: {str(e)}"
 
 
-def list_calendar_events(time_min: str, time_max: str, user_id: Annotated[str, InjectedState("user_id")], timezone: str = DEFAULT_TIMEZONE) -> str:
+def list_calendar_events(time_min: str, time_max: str, user_id: str, timezone: str = DEFAULT_TIMEZONE) -> str:
     """
     List Google Calendar events within a date range.
 

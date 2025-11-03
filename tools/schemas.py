@@ -21,6 +21,9 @@ class CreateReminderInput(BaseModel):
     when: str = Field(
         description="Natural language date/time expression (e.g., 'tomorrow at 10am', 'next Friday 2pm')"
     )
+    user_id: str = Field(
+        description="Unique identifier for the user"
+    )
     timezone: str = Field(
         default="UTC",
         description="Timezone for the reminder (e.g., 'UTC', 'America/New_York')"
@@ -50,6 +53,9 @@ class AddTaskInput(BaseModel):
     task: str = Field(
         description="The task description to add (e.g., 'buy milk', 'review code')"
     )
+    user_id: str = Field(
+        description="Unique identifier for the user"
+    )
 
     @field_validator('task')
     def task_not_empty(cls, v):
@@ -62,10 +68,10 @@ class AddTaskInput(BaseModel):
 class ListTasksInput(BaseModel):
     """
     Input schema for listing all incomplete tasks for a user.
-
-    Note: user_id is automatically injected from state.
     """
-    pass
+    user_id: str = Field(
+        description="Unique identifier for the user"
+    )
 
 
 class MarkTaskDoneInput(BaseModel):
@@ -77,6 +83,9 @@ class MarkTaskDoneInput(BaseModel):
     task_number: int = Field(
         ge=1,
         description="The task number to mark as done (1-indexed, from list_tasks output)"
+    )
+    user_id: str = Field(
+        description="Unique identifier for the user"
     )
 
     @field_validator('task_number')
@@ -92,9 +101,10 @@ class ClearAllTasksInput(BaseModel):
     Input schema for clearing all tasks for a user.
 
     Warning: This operation cannot be undone.
-    Note: user_id is automatically injected from state.
     """
-    pass
+    user_id: str = Field(
+        description="Unique identifier for the user"
+    )
 
 
 class ListCalendarEventsInput(BaseModel):
@@ -110,6 +120,9 @@ class ListCalendarEventsInput(BaseModel):
     time_max: str = Field(
         description="End date in natural language (e.g., 'end of week', 'friday', 'next monday')",
         examples=["end of week", "friday", "sunday", "next monday"]
+    )
+    user_id: str = Field(
+        description="Unique identifier for the user"
     )
     timezone: str = Field(
         default="UTC",
