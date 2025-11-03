@@ -51,7 +51,7 @@ def test_create_graph_compiles_with_checkpointing(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(graph, "StateGraph", fake_state_graph)
     monkeypatch.setattr(graph, "SqliteSaver", DummySaver)
-    monkeypatch.setattr(graph, "create_tool_node", lambda: "TOOL")
+    monkeypatch.setattr(graph, "tool_node_with_state_injection", "TOOL")
     monkeypatch.setattr(graph, "get_db_path", lambda db_name: f"/tmp/{db_name}")
 
     dummy_connection = DummyConnection()
