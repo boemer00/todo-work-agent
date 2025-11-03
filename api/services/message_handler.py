@@ -4,6 +4,7 @@ import hashlib
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any
+from langchain_core.messages import HumanMessage
 from agent.graph import create_graph
 
 # Thread pool for running sync agent code
@@ -87,7 +88,7 @@ def _run_agent_sync(message: str, user_id: str, user_phone: str) -> Dict[str, An
 
     # Prepare input state
     state = {
-        "messages": [{"role": "user", "content": message}],
+        "messages": [HumanMessage(content=message)],
         "user_id": user_id
     }
 
