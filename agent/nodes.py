@@ -41,11 +41,14 @@ def agent_node(state: State) -> Dict[str, Any]:
         Dictionary with updated messages
     """
     messages = state["messages"]
+    user_id = state["user_id"]
 
     # Inject system message at the start if not already present
     # This ensures the agent's persona is always active
+    # IMPORTANT: Include the actual user_id value so LLM can use it in tool calls
     if not messages or not isinstance(messages[0], SystemMessage):
-        messages = [SystemMessage(content=SYSTEM_MESSAGE)] + messages
+        system_message_with_user_id = f"{SYSTEM_MESSAGE}\n\n**YOUR USER_ID FOR TOOL CALLS: {user_id}**\nAlways use this exact user_id value when calling any tool."
+        messages = [SystemMessage(content=system_message_with_user_id)] + messages
 
     llm_with_tools = get_llm_with_tools()
 
