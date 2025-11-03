@@ -256,9 +256,28 @@ def datetime_to_iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
+def _normalize_iso_utc_z(iso_string: str) -> str:
+    """
+    Normalize trailing 'Z' (UTC) to '+00:00' for datetime.fromisoformat compatibility.
+
+    Args:
+        iso_string: ISO 8601 datetime string, possibly ending with 'Z'
+
+    Returns:
+        Normalized ISO string compatible with datetime.fromisoformat
+    """
+    s = iso_string.strip()
+    if s.endswith("Z"):
+        return s[:-1] + "+00:00"
+    return s
+
+
 def iso_to_datetime(iso_string: str) -> datetime:
     """
     Convert ISO 8601 format string to datetime object.
+
+    Accepts both timezone-offset formats and trailing 'Z' (UTC) by normalizing
+    to '+00:00' before parsing.
 
     Args:
         iso_string: ISO format datetime string
@@ -269,5 +288,8 @@ def iso_to_datetime(iso_string: str) -> datetime:
     Examples:
         >>> iso_to_datetime("2025-10-28T10:00:00+00:00")
         datetime(2025, 10, 28, 10, 0, tzinfo=...)
+        >>> iso_to_datetime("2025-10-28T10:00:00Z")
+        datetime(2025, 10, 28, 10, 0, tzinfo=...)
     """
-    return datetime.fromisoformat(iso_string)
+    normalized = _normalize_iso_utc_z(iso_string)
+    return datetime.fromisoformat(normalized)

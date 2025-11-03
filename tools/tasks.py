@@ -337,8 +337,8 @@ def list_calendar_events(time_min: str, time_max: str, user_id: Annotated[str, I
                     result += f"  📍 {location}\n"
 
             except Exception as parse_error:
-                # Fallback to raw display if parsing fails
-                result += f"• {start_time}: {summary}\n"
+                # Fallback to raw display if parsing fails (preserve location and all-day info)
+                result += _format_calendar_event_fallback(event, timezone)
 
         return result.strip()
 
@@ -347,3 +347,25 @@ def list_calendar_events(time_min: str, time_max: str, user_id: Annotated[str, I
 
     except Exception as e:
         return f"❌ Error fetching calendar events: {str(e)}"
+
+
+def _format_calendar_event_fallback(event: dict, timezone: str) -> str:
+    """
+    Build a display string for a calendar event when datetime parsing fails.
+
+    - Show the raw start timestamp.
+    - Include '(All day)' when event['all_day'] is True.
+    - Add a separate '📍 <location>' line when location is present.
+    """
+    summary = event.get('summary', '(No title)')
+    start_time = event.get('start', '')
+    location = event.get('location', '')
+    is_all_day = bool(event.get('all_day'))
+
+    line = f"• {start_time}"
+    if is_all_day:
+        line += " (All day)"
+    line += f": {summary}\n"
+    if location:
+        line += f"  📍 {location}\n"
+    return line
