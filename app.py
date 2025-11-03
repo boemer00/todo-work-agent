@@ -105,7 +105,7 @@ def run_agent(user_id=None):
 
     # Initialize state with user_id
     # The user_id is used by tools to isolate tasks per user
-    state = {"messages": [], "user_id": user_id}
+    state = {"messages": [], "user_id": user_id, "plan_step": 0}
 
     while True:
         # Get user input

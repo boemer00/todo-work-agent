@@ -22,7 +22,7 @@ class CreateReminderInput(BaseModel):
         description="Natural language date/time expression (e.g., 'tomorrow at 10am', 'next Friday 2pm')"
     )
     user_id: str = Field(
-        description="Unique identifier for the user"
+        description="User identifier (will be auto-injected from context)"
     )
     timezone: str = Field(
         default="UTC",
@@ -54,7 +54,7 @@ class AddTaskInput(BaseModel):
         description="The task description to add (e.g., 'buy milk', 'review code')"
     )
     user_id: str = Field(
-        description="Unique identifier for the user"
+        description="User identifier (will be auto-injected from context)"
     )
 
     @field_validator('task')
@@ -70,7 +70,7 @@ class ListTasksInput(BaseModel):
     Input schema for listing all incomplete tasks for a user.
     """
     user_id: str = Field(
-        description="Unique identifier for the user"
+        description="User identifier (will be auto-injected from context)"
     )
 
 
@@ -85,7 +85,7 @@ class MarkTaskDoneInput(BaseModel):
         description="The task number to mark as done (1-indexed, from list_tasks output)"
     )
     user_id: str = Field(
-        description="Unique identifier for the user"
+        description="User identifier (will be auto-injected from context)"
     )
 
     @field_validator('task_number')
@@ -103,5 +103,28 @@ class ClearAllTasksInput(BaseModel):
     Warning: This operation cannot be undone.
     """
     user_id: str = Field(
-        description="Unique identifier for the user"
+        description="User identifier (will be auto-injected from context)"
+    )
+
+
+class ListCalendarEventsInput(BaseModel):
+    """
+    Input schema for listing Google Calendar events in a date range.
+
+    Use this when the user asks about their schedule, calendar, or upcoming events.
+    """
+    time_min: str = Field(
+        description="Start date in natural language (e.g., 'today', 'monday', 'this week')",
+        examples=["today", "monday", "this week", "tomorrow"]
+    )
+    time_max: str = Field(
+        description="End date in natural language (e.g., 'end of week', 'friday', 'next monday')",
+        examples=["end of week", "friday", "sunday", "next monday"]
+    )
+    user_id: str = Field(
+        description="User identifier (will be auto-injected from context)"
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="User's timezone (e.g., 'America/New_York', 'Europe/London')"
     )

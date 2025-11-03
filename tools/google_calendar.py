@@ -21,7 +21,7 @@ Security:
 import os
 import pickle
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -294,3 +294,86 @@ def update_calendar_event(
     except Exception as e:
         print(f"❌ Error updating calendar event: {str(e)}")
         return False
+
+
+def list_calendar_events(
+    time_min: datetime,
+    time_max: datetime,
+    max_results: int = 50
+) -> List[Dict[str, Any]]:
+    """
+    List Google Calendar events within a date range.
+
+    Args:
+        time_min: Start of date range (inclusive)
+        time_max: End of date range (exclusive)
+        max_results: Maximum number of events to return (default: 50)
+
+    Returns:
+        List of event dictionaries with: id, summary, start, end, description
+        Empty list if no events found or on error
+
+    Example:
+        >>> from datetime import datetime, timedelta
+        >>> now = datetime.now()
+        >>> week_later = now + timedelta(days=7)
+        >>> events = list_calendar_events(now, week_later)
+        >>> for event in events:
+        ...     print(f"{event['summary']} at {event['start']}")
+    """
+    from typing import List, Dict, Any
+
+    try:
+        service = get_calendar_service()
+
+        # Convert datetime to RFC3339 format for API
+        time_min_str = time_min.isoformat() + 'Z' if time_min.tzinfo is None else time_min.isoformat()
+        time_max_str = time_max.isoformat() + 'Z' if time_max.tzinfo is None else time_max.isoformat()
+
+        # Call Google Calendar API
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=time_min_str,
+            timeMax=time_max_str,
+            maxResults=max_results,
+            singleEvents=True,  # Expand recurring events
+            orderBy='startTime'  # Sort by start time
+        ).execute()
+
+        events = events_result.get('items', [])
+
+        # Parse and format events
+        formatted_events = []
+        for event in events:
+            # Extract start time (could be dateTime or date for all-day events)
+            start = event.get('start', {})
+            start_time = start.get('dateTime', start.get('date'))
+
+            # Extract end time
+            end = event.get('end', {})
+            end_time = end.get('dateTime', end.get('date'))
+
+            formatted_events.append({
+                'id': event.get('id'),
+                'summary': event.get('summary', '(No title)'),
+                'start': start_time,
+                'end': end_time,
+                'description': event.get('description', ''),
+                'location': event.get('location', ''),
+                'all_day': 'date' in start  # True if all-day event
+            })
+
+        return formatted_events
+
+    except FileNotFoundError:
+        # OAuth credentials not configured
+        print("⚠️ Google Calendar not configured. See docs/GOOGLE_CALENDAR_SETUP.md")
+        return []
+
+    except HttpError as e:
+        print(f"❌ Google Calendar API error: {e}")
+        return []
+
+    except Exception as e:
+        print(f"❌ Error listing calendar events: {str(e)}")
+        return []
