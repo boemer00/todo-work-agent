@@ -42,8 +42,7 @@ User: "organize my week"
 
 TOOL USAGE GUIDELINES:
 
-**IMPORTANT**: When calling any tool, you MUST provide the `user_id` parameter.
-The user_id for the current conversation is available in your context - always use it when calling tools.
+NOTE: All tools require a `user_id` parameter. This will be automatically managed by the system.
 
 1. **When to use create_reminder()**:
    - User specifies a date/time (e.g., "remind me to call Gabi tomorrow at 10am")

@@ -10,7 +10,7 @@ from .state import State
 from .nodes import (
     agent_node,
     should_continue,
-    create_tool_node,
+    tool_node_with_state_injection,
     planner_node,
     reflection_node,
     should_plan,
@@ -72,10 +72,10 @@ def create_graph():
     builder = StateGraph(State)
 
     # Add nodes
-    builder.add_node("planner", planner_node)      # Creates plan for complex requests
-    builder.add_node("agent", agent_node)          # Main reasoning node
-    builder.add_node("tools", create_tool_node())  # Tool execution
-    builder.add_node("reflection", reflection_node) # Progress tracking
+    builder.add_node("planner", planner_node)                    # Creates plan for complex requests
+    builder.add_node("agent", agent_node)                        # Main reasoning node
+    builder.add_node("tools", tool_node_with_state_injection)    # Tool execution with user_id injection
+    builder.add_node("reflection", reflection_node)              # Progress tracking
 
     # Entry point: Check if request needs planning
     builder.add_conditional_edges(

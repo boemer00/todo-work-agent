@@ -41,14 +41,11 @@ def agent_node(state: State) -> Dict[str, Any]:
         Dictionary with updated messages
     """
     messages = state["messages"]
-    user_id = state["user_id"]
 
     # Inject system message at the start if not already present
     # This ensures the agent's persona is always active
-    # IMPORTANT: Include the actual user_id value so LLM can use it in tool calls
     if not messages or not isinstance(messages[0], SystemMessage):
-        system_message_with_user_id = f"{SYSTEM_MESSAGE}\n\n**YOUR USER_ID FOR TOOL CALLS: {user_id}**\nAlways use this exact user_id value when calling any tool."
-        messages = [SystemMessage(content=system_message_with_user_id)] + messages
+        messages = [SystemMessage(content=SYSTEM_MESSAGE)] + messages
 
     llm_with_tools = get_llm_with_tools()
 
@@ -126,20 +123,91 @@ def should_continue(state: State) -> Literal["tools", "end"]:
     return "end"
 
 
-def create_tool_node() -> ToolNode:
+def tool_node_with_state_injection(state: State) -> Dict[str, Any]:
     """
-    Create the tool node for executing tools.
+    Custom tool execution node that injects user_id from state into tool calls.
 
-    Uses LangGraph's prebuilt ToolNode which automatically:
-    - Extracts tool calls from messages
-    - Executes the appropriate tool functions
-    - Formats results as ToolMessages
+    This solves the problem where the LLM can't access state variables directly.
+    Instead of requiring the LLM to provide user_id (which it can't reliably do),
+    we inject it automatically from the state before calling tools.
+
+    Flow:
+    1. Get tool calls from the last AI message
+    2. Get user_id from state
+    3. Inject user_id into each tool call's arguments
+    4. Call the raw tool functions directly (bypassing StructuredTool validation)
+    5. Return ToolMessages with results
+
+    Args:
+        state: Current state containing messages and user_id
 
     Returns:
-        Configured ToolNode instance
+        Dictionary with ToolMessages from tool execution
     """
-    tools = get_tools()
-    return ToolNode(tools)
+    from langchain_core.messages import ToolMessage
+    from tools.tasks import (
+        add_task,
+        list_tasks,
+        mark_task_done,
+        clear_all_tasks,
+        create_reminder,
+        list_calendar_events
+    )
+
+    messages = state["messages"]
+    user_id = state["user_id"]
+
+    # Get the last message (should be AIMessage with tool_calls)
+    last_message = messages[-1]
+
+    if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
+        # No tool calls to execute
+        return {"messages": []}
+
+    # Map tool names to raw functions
+    # We call the raw functions directly to bypass StructuredTool's arg validation
+    tool_functions = {
+        "create_reminder": create_reminder,
+        "add_task": add_task,
+        "list_tasks": list_tasks,
+        "mark_task_done": mark_task_done,
+        "clear_all_tasks": clear_all_tasks,
+        "list_calendar_events": list_calendar_events
+    }
+
+    # Execute each tool call with user_id injected
+    tool_messages = []
+    for tool_call in last_message.tool_calls:
+        tool_name = tool_call["name"]
+        tool_args = tool_call["args"].copy()  # Make a copy to avoid modifying original
+        tool_id = tool_call["id"]
+
+        # Inject user_id into the arguments
+        # The tool function expects it, but LLM doesn't provide it (removed from schema)
+        tool_args["user_id"] = user_id
+
+        # Execute the tool by calling the raw function directly
+        try:
+            tool_func = tool_functions.get(tool_name)
+            if not tool_func:
+                result = f"Error: Tool '{tool_name}' not found"
+            else:
+                # Call the raw function with injected user_id
+                result = tool_func(**tool_args)
+        except Exception as e:
+            result = f"Error executing {tool_name}: {str(e)}"
+            logger.error(f"Tool execution error: {tool_name} - {e}", exc_info=True)
+
+        # Create ToolMessage with the result
+        tool_messages.append(
+            ToolMessage(
+                content=str(result),
+                tool_call_id=tool_id,
+                name=tool_name
+            )
+        )
+
+    return {"messages": tool_messages}
 
 
 # ========================================
