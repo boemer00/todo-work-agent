@@ -1,12 +1,12 @@
 # AI Task Agent - Production Deployment on Google Cloud Run
 
 [![CI/CD Pipeline](https://github.com/boemer00/todo-work-agent/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/boemer00/todo-work-agent/actions/workflows/ci-cd.yml)
-[![Tests](https://img.shields.io/badge/tests-111%20passing-success)](https://github.com/boemer00/todo-work-agent/actions)
+[![Tests](https://img.shields.io/badge/tests-121%20passing-success)](https://github.com/boemer00/todo-work-agent/actions)
 [![Coverage](https://img.shields.io/badge/coverage-77.3%25-yellow)](https://codecov.io/gh/boemer00/todo-work-agent)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/downloads/)
 [![Deployed](https://img.shields.io/badge/deployed-Google%20Cloud%20Run-4285F4?logo=google-cloud)](https://ai-task-agent-kbimuakj2a-uc.a.run.app)
 
-An intelligent task management agent deployed on **Google Cloud Run** with **WhatsApp interface**, powered by **LangGraph** and **GPT-4o-mini**. Features natural language date parsing, multi-user support, and Google Calendar integration. Built to demonstrate production-ready AI engineering skills.
+An intelligent task management agent deployed on **Google Cloud Run** with **WhatsApp interface**, powered by **LangGraph** and **GPT-4o-mini**. Features **Plan-Execute architecture** for complex multi-step requests, natural language date parsing, multi-user support, and Google Calendar integration. Built to demonstrate production-ready Agentic AI engineering skills.
 
 **Live Service**: https://ai-task-agent-kbimuakj2a-uc.a.run.app
 
@@ -26,9 +26,10 @@ An intelligent task management agent deployed on **Google Cloud Run** with **Wha
 
 ## ⚡ Key Features
 
+- **🧠 Plan-Execute Architecture** - Agent breaks down complex requests into multi-step plans (NEW!)
 - **🚀 Production Deployment** - Fully deployed on Google Cloud Run with HTTPS endpoints
 - **💬 WhatsApp Interface** - Natural conversational UI via Twilio WhatsApp API
-- **🧠 LangGraph Agent** - ReAct pattern with state management and checkpointing
+- **🔄 Advanced Agent Patterns** - ReAct loop with planning, reflection, and state management
 - **🗄️ Cloud-Native Storage** - SQLite databases synced to Cloud Storage
 - **🌍 Multi-User Support** - Isolated task lists per user with phone number hashing
 - **⏰ Smart Date Parsing** - "tomorrow at 2pm", "next Friday", "in 3 hours"
@@ -134,14 +135,11 @@ ngrok http 8080
 
 ---
 
-## 💬 Example Interaction
+## 💬 Example Interactions
 
+### Simple Request (Direct Execution)
 ```
-User: Hi!
-Agent: 👋 Hi! I'm your task assistant...
-
 User: remind me to buy kombucha tomorrow at 2pm
-Agent: Working on it.
 Agent: ✓ Reminder set: 'buy kombucha' for Thursday, October 31, 2025 at 02:00 PM
 
 User: show my tasks
@@ -152,11 +150,51 @@ User: mark 1 as done
 Agent: ✓ Marked task #1 as done: 'buy kombucha'
 ```
 
+### Complex Request (Plan-Execute Pattern) 🆕
+```
+User: organize my tasks for this week
+
+Agent: [Internal] Creating plan...
+       📋 Plan:
+       1. List all current tasks
+       2. Check which tasks have due dates
+       3. Prioritize tasks by deadline
+       4. Suggest a schedule for the week
+
+Agent: Let me help organize your week. First, let me see what you have...
+       [Executes: list_tasks()]
+
+       I found 5 tasks:
+       - Project report (Due: Nov 4, 2pm) 🔴 URGENT
+       - Review PRs (Due: Nov 4, 4pm)
+       - Buy groceries (Due: Nov 5, 2pm)
+       - Call dentist (no deadline)
+       - Email team (no deadline)
+
+Agent: [Reflection: Step 1 complete → Moving to step 2]
+
+Agent: Now let me prioritize by urgency...
+
+       Here's your organized week:
+
+       **Monday (Nov 4):**
+       - 2pm: Finish project report ⚡
+       - 4pm: Review pull requests
+
+       **Tuesday (Nov 5):**
+       - 2pm: Buy groceries
+       - Evening: Call dentist, email team
+
+       You have 2 urgent tasks today! Would you like me to set reminders?
+```
+
+**Key Difference**: Complex requests trigger the Plan-Execute pattern, where the agent creates a multi-step plan and systematically works through it with reflection after each step.
+
 ---
 
 ## 🧪 Testing
 
-**Test Coverage**: 50 tests | 64% coverage | <3s runtime
+**Test Coverage**: 121 tests | 70% coverage | <4s runtime
 
 ### Run Tests
 
@@ -244,9 +282,9 @@ Agent: "✅ Calendar connected! Creating reminder..."
 ```
 my-agent/
 ├── agent/
-│   ├── graph.py              # LangGraph workflow definition
-│   ├── nodes.py              # Agent & tools nodes
-│   ├── state.py              # State schema (messages, user_id)
+│   ├── graph.py              # LangGraph workflow with Plan-Execute pattern
+│   ├── nodes.py              # Agent, planner, reflection, tools nodes
+│   ├── state.py              # State schema (messages, user_id, plan, plan_step)
 │   └── prompts.py            # System prompts
 ├── api/
 │   ├── main.py               # FastAPI app entry point
@@ -269,7 +307,7 @@ my-agent/
 │   └── date_parser.py        # Natural language date parsing
 ├── config/
 │   └── settings.py           # Environment config
-├── tests/                    # 50 tests, 64% coverage
+├── tests/                    # 121 tests, 70% coverage (includes planning tests)
 ├── docs/                     # Setup guides
 ├── app.py                    # CLI entry point
 ├── deploy.sh                 # Cloud Run deployment script
@@ -281,10 +319,16 @@ my-agent/
 
 ## 🎤 Interview Talking Points
 
+**Agent Architecture & Advanced Patterns** 🆕
+- **"Explain your Plan-Execute implementation"** → Complex requests trigger planner node → LLM creates numbered plan → agent executes step-by-step → reflection node tracks progress → repeats until plan complete. Simple requests bypass planning for efficiency.
+- **"Why Plan-Execute over simple ReAct?"** → Handles multi-step goals (e.g., "organize my week"), improves task decomposition, shows structured thinking. Demonstrates understanding of advanced agentic patterns beyond basic tool calling.
+- **"How does reflection work?"** → After each tool execution, reflection node checks: (1) Did we complete current step? (2) Move to next step or finish? (3) Clear plan when done. Keeps agent focused on structured goals.
+- **"Show me the agent flow"** → START → should_plan() router → [planner OR agent] → agent → tools → should_reflect() router → [reflection OR agent] → loop until END. Conditional routing based on request complexity and plan state.
+
 **Architecture & Design**
-- **"Why LangGraph over pure LLM calls?"** → State persistence, checkpointing for conversation memory, built-in tool calling, conditional routing
-- **"Explain the ReAct pattern"** → Reasoning (LLM thinks) → Acting (execute tools) → Observation (tool results) → repeat until done
-- **"How does Cloud Run handle statelessness?"** → Databases synced to Cloud Storage on startup/shutdown, ephemeral containers
+- **"Why LangGraph over pure LLM calls?"** → State persistence, checkpointing for conversation memory, built-in tool calling, conditional routing, Plan-Execute pattern support
+- **"Explain the ReAct pattern"** → Reasoning (LLM thinks) → Acting (execute tools) → Observation (tool results) → repeat until done. Enhanced with planning for complex requests.
+- **"How does Cloud Run handle statelessness?"** → Databases synced to Cloud Storage on startup/shutdown, ephemeral containers, checkpointer maintains conversation state
 
 **Production Considerations**
 - **"How do you handle Cloud Run cold starts?"** → First message gets "Working on it" acknowledgment within 100ms, then full response after agent processing

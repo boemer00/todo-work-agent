@@ -7,23 +7,45 @@ Builds and compiles the agent workflow with checkpointing support.
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
 from .state import State
-from .nodes import agent_node, should_continue, create_tool_node
+from .nodes import (
+    agent_node,
+    should_continue,
+    create_tool_node,
+    planner_node,
+    reflection_node,
+    should_plan,
+    should_reflect
+)
 from database.connection import get_db_path
 
 
 def create_graph():
     """
-    Construct the agent graph with persistence.
+    Construct the agent graph with persistence and planning capabilities.
 
-    Flow:
-    START → agent → (decision)
-                    ├─→ tools → agent (loop back)
-                    └─→ END (done)
+    Flow (with planning):
+    START → (check complexity) → planner OR agent
+                                   ↓          ↓
+                                 agent ← ← ← ┘
+                                   ↓
+                              (has tools?)
+                                   ↓
+                                 tools
+                                   ↓
+                              (has plan?)
+                                   ↓
+                           reflection OR agent
+                                   ↓          ↓
+                                 agent ← ← ← ┘
+                                   ↓
+                                  END
 
     Features:
+    - Plan-Execute pattern for complex multi-step requests
+    - Reflection node to track progress through plans
+    - Simple requests bypass planning for efficiency
     - LangGraph checkpointing for conversation memory
     - SQLite backend for state persistence
-    - Supports resume, undo, and time-travel debugging
 
     Returns:
         Compiled graph with checkpointing enabled
@@ -50,24 +72,46 @@ def create_graph():
     builder = StateGraph(State)
 
     # Add nodes
-    builder.add_node("agent", agent_node)
-    builder.add_node("tools", create_tool_node())
+    builder.add_node("planner", planner_node)      # Creates plan for complex requests
+    builder.add_node("agent", agent_node)          # Main reasoning node
+    builder.add_node("tools", create_tool_node())  # Tool execution
+    builder.add_node("reflection", reflection_node) # Progress tracking
 
-    # Add edges
-    builder.add_edge(START, "agent")  # Always start with agent
+    # Entry point: Check if request needs planning
+    builder.add_conditional_edges(
+        START,
+        should_plan,
+        {
+            "planner": "planner",  # Complex request → create plan first
+            "agent": "agent"       # Simple request → go directly to agent
+        }
+    )
 
-    # Conditional edge: agent decides whether to call tools or finish
+    # After planning, go to agent
+    builder.add_edge("planner", "agent")
+
+    # Agent decides whether to call tools or finish
     builder.add_conditional_edges(
         "agent",
         should_continue,
         {
-            "tools": "tools",  # If "tools" returned, go to tools node
-            "end": END         # If "end" returned, finish
+            "tools": "tools",  # If agent wants to use tools
+            "end": END         # If agent is done
         }
     )
 
-    # After tools execute, loop back to agent
-    builder.add_edge("tools", "agent")
+    # After tools execute, check if we need reflection
+    builder.add_conditional_edges(
+        "tools",
+        should_reflect,
+        {
+            "reflection": "reflection",  # If following a plan
+            "agent": "agent"              # If no plan, back to agent
+        }
+    )
+
+    # After reflection, loop back to agent for next step
+    builder.add_edge("reflection", "agent")
 
     # Compile the graph with checkpointing enabled
     # The checkpointer automatically saves state after each node

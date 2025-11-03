@@ -26,7 +26,7 @@ def test_create_graph_compiles_with_checkpointing(monkeypatch: pytest.MonkeyPatc
             self.state_cls = state_cls
             self.nodes: dict[str, Any] = {}
             self.edges: list[tuple[Any, Any]] = []
-            self.conditional: tuple[str, Any, dict[str, Any]] | None = None
+            self.conditionals: list[tuple[str, Any, dict[str, Any]]] = []  # Store all conditionals
             self.compiled_with: Any = None
 
         def add_node(self, name: str, func: Any) -> None:
@@ -36,7 +36,7 @@ def test_create_graph_compiles_with_checkpointing(monkeypatch: pytest.MonkeyPatc
             self.edges.append((src, dest))
 
         def add_conditional_edges(self, name: str, condition: Any, mapping: dict[str, Any]) -> None:
-            self.conditional = (name, condition, mapping)
+            self.conditionals.append((name, condition, mapping))
 
         def compile(self, checkpointer: Any) -> str:
             self.compiled_with = checkpointer
@@ -62,10 +62,30 @@ def test_create_graph_compiles_with_checkpointing(monkeypatch: pytest.MonkeyPatc
 
     assert compiled == "compiled-graph"
     assert dummy_conn_queries[-1] == "PRAGMA journal_mode=WAL"
+
+    # Check all nodes exist (including new planning nodes)
     assert builder.nodes["agent"] is graph.agent_node
     assert builder.nodes["tools"] == "TOOL"
+    assert "planner" in builder.nodes
+    assert "reflection" in builder.nodes
+
+    # Check edges (now includes planner → agent and reflection → agent)
     assert any(dest == "agent" for _src, dest in builder.edges)
-    assert ("tools", "agent") in builder.edges
-    assert builder.conditional[0] == "agent"
-    assert builder.conditional[1] is graph.should_continue
+    assert ("planner", "agent") in builder.edges
+    assert ("reflection", "agent") in builder.edges
+
+    # The old direct "tools → agent" edge is now conditional through should_reflect
+    # So we don't check for it anymore
+
+    # Check that we have multiple conditional edges (START, agent, tools)
+    assert len(builder.conditionals) >= 3
+    conditional_nodes = [cond[0] for cond in builder.conditionals]
+    assert "agent" in conditional_nodes  # Agent decides tools/end
+    assert "tools" in conditional_nodes  # Tools route to reflection/agent
+
+    # Check that agent conditional uses should_continue
+    agent_conditionals = [cond for cond in builder.conditionals if cond[0] == "agent"]
+    assert len(agent_conditionals) > 0
+    assert agent_conditionals[0][1] is graph.should_continue
+
     assert builder.compiled_with.conn is dummy_connection
