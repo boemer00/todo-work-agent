@@ -49,34 +49,33 @@ TOKEN_PATH = 'token.json'
 
 def _load_service_account_credentials() -> service_account.Credentials:
     """
-    Load service account credentials from Google Cloud Secret Manager.
+    Load service account credentials from environment variable.
 
     Used when running in Cloud Run (CLOUD_RUN=true).
+
+    Note: When using --set-secrets in Cloud Run deployment, the secret VALUE
+    is automatically injected into the environment variable, not the secret name.
+    So CALENDAR_SERVICE_ACCOUNT_SECRET contains the actual JSON credentials.
 
     Returns:
         Service account credentials object
 
     Raises:
-        Exception: If secret not found or invalid JSON
+        ValueError: If environment variable not set
+        json.JSONDecodeError: If JSON is invalid
     """
-    from google.cloud import secretmanager
+    # Get the service account JSON directly from environment variable
+    # Cloud Run's --set-secrets automatically injects the secret content
+    secret_json = os.getenv('CALENDAR_SERVICE_ACCOUNT_SECRET')
 
-    project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-    secret_name = os.getenv('CALENDAR_SERVICE_ACCOUNT_SECRET', 'calendar-service-account')
-
-    if not project_id:
-        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
-
-    # Initialize Secret Manager client
-    client = secretmanager.SecretManagerServiceClient()
-    secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
-
-    # Access the secret
-    response = client.access_secret_version(request={"name": secret_path})
-    secret_payload = response.payload.data.decode('UTF-8')
+    if not secret_json:
+        raise ValueError(
+            "CALENDAR_SERVICE_ACCOUNT_SECRET environment variable not set. "
+            "Ensure Cloud Run deployment includes --set-secrets flag."
+        )
 
     # Parse JSON and create credentials
-    service_account_info = json.loads(secret_payload)
+    service_account_info = json.loads(secret_json)
     credentials = service_account.Credentials.from_service_account_info(
         service_account_info,
         scopes=SCOPES
