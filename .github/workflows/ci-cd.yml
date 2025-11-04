@@ -156,7 +156,9 @@ jobs:
             --set-env-vars "TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}" \
             --set-env-vars "TWILIO_WHATSAPP_NUMBER=${{ secrets.TWILIO_WHATSAPP_NUMBER }}" \
             --set-env-vars "REDIS_URL=${{ secrets.REDIS_URL }}" \
-            --set-env-vars "DEFAULT_TIMEZONE=Europe/London"
+            --set-env-vars "DEFAULT_TIMEZONE=Europe/London" \
+            --set-env-vars "GOOGLE_CALENDAR_ID=${{ secrets.GOOGLE_CALENDAR_ID }}" \
+            --set-secrets "CALENDAR_SERVICE_ACCOUNT_SECRET=calendar-service-account:latest"
 
       - name: Get Cloud Run URL
         id: get-url
