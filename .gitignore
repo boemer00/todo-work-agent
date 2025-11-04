@@ -44,3 +44,8 @@ htmlcov/
 gcp-key.json
 github-actions-key.json
 *-key.json
+
+# Calendar test files
+test_calendar.py
+test_agent_calendar.py
+verify_calendar.py

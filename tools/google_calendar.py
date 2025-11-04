@@ -20,48 +20,100 @@ Security:
 
 import os
 import pickle
+import json
+
+# CRITICAL: Clean up stale GOOGLE_APPLICATION_CREDENTIALS before using Google clients
+# This env var may be inherited from shell/IDE and points to non-existent files
+# We use either OAuth (local) or Secret Manager (Cloud Run), NOT this env var
+if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+    del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # Google Calendar API scopes
-# Using calendar.events scope for read/write access to events
-SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+# Using full calendar scope for read/write access to calendars and events
+# Note: .calendar.events is too restrictive for listing calendars
+SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # Paths for credentials and token
 CREDENTIALS_PATH = 'credentials.json'
 TOKEN_PATH = 'token.json'
 
 
+def _load_service_account_credentials() -> service_account.Credentials:
+    """
+    Load service account credentials from Google Cloud Secret Manager.
+
+    Used when running in Cloud Run (CLOUD_RUN=true).
+
+    Returns:
+        Service account credentials object
+
+    Raises:
+        Exception: If secret not found or invalid JSON
+    """
+    from google.cloud import secretmanager
+
+    project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+    secret_name = os.getenv('CALENDAR_SERVICE_ACCOUNT_SECRET', 'calendar-service-account')
+
+    if not project_id:
+        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
+
+    # Initialize Secret Manager client
+    client = secretmanager.SecretManagerServiceClient()
+    secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
+
+    # Access the secret
+    response = client.access_secret_version(request={"name": secret_path})
+    secret_payload = response.payload.data.decode('UTF-8')
+
+    # Parse JSON and create credentials
+    service_account_info = json.loads(secret_payload)
+    credentials = service_account.Credentials.from_service_account_info(
+        service_account_info,
+        scopes=SCOPES
+    )
+
+    return credentials
+
+
 def get_calendar_service() -> Any:
     """
     Get authenticated Google Calendar service.
 
-    Handles the complete OAuth 2.0 flow:
-    1. Check if token.json exists (previous auth)
-    2. If exists and valid, use it
-    3. If expired, refresh it
-    4. If no token, run OAuth flow (opens browser)
-    5. Save token for future use
+    Cloud Run (CLOUD_RUN=true):
+    - Uses service account credentials from Secret Manager
+    - No browser interaction needed
+    - All users share one calendar
+
+    Local Development (CLOUD_RUN=false or not set):
+    - Uses OAuth 2.0 flow (opens browser on first run)
+    - Token persistence prevents re-auth
+    - Personal calendar access
 
     Returns:
         Authenticated Google Calendar service object
 
     Raises:
-        FileNotFoundError: If credentials.json not found
+        FileNotFoundError: If credentials.json not found (local mode)
         Exception: If authentication fails
-
-    Interview Notes:
-    - OAuth 2.0 authorization code flow for desktop apps
-    - Token persistence prevents re-auth on every run
-    - Automatic token refresh using refresh_token
-    - Scope limitation (calendar.events only, not full calendar access)
     """
+    # Check if running in Cloud Run
+    if os.getenv('CLOUD_RUN') == 'true':
+        # Use service account authentication
+        creds = _load_service_account_credentials()
+        service = build('calendar', 'v3', credentials=creds)
+        return service
+
+    # Local development: Use OAuth 2.0 flow
     creds = None
 
     # Check if we have a saved token from previous auth
@@ -173,8 +225,9 @@ def create_calendar_event(
         if location:
             event['location'] = location
 
-        # Create the event (using 'primary' calendar)
-        result = service.events().insert(calendarId='primary', body=event).execute()
+        # Create the event
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+        result = service.events().insert(calendarId=calendar_id, body=event).execute()
 
         # Return the event ID (for tracking/syncing)
         return result.get('id')
@@ -212,7 +265,8 @@ def delete_calendar_event(event_id: str) -> bool:
     """
     try:
         service = get_calendar_service()
-        service.events().delete(calendarId='primary', eventId=event_id).execute()
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
         return True
 
     except HttpError as e:
@@ -263,9 +317,10 @@ def update_calendar_event(
 
     try:
         service = get_calendar_service()
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
 
         # First, get the current event
-        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
         # Update only the provided fields
         if summary:
@@ -284,7 +339,7 @@ def update_calendar_event(
             }
 
         # Update the event
-        service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
         return True
 
     except HttpError as e:
@@ -331,8 +386,9 @@ def list_calendar_events(
         time_max_str = time_max.isoformat() + 'Z' if time_max.tzinfo is None else time_max.isoformat()
 
         # Call Google Calendar API
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
         events_result = service.events().list(
-            calendarId='primary',
+            calendarId=calendar_id,
             timeMin=time_min_str,
             timeMax=time_max_str,
             maxResults=max_results,

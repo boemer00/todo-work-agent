@@ -15,6 +15,18 @@ USAGE:
     python app.py --user <username>
 """
 
+# CRITICAL: Clean up environment before ANY imports
+import os
+import sys
+
+# WORKAROUND: Remove stale GOOGLE_APPLICATION_CREDENTIALS from shell environment
+# This may be inherited from parent processes (terminal, IDE, etc.)
+# We use either OAuth (CLOUD_RUN=false) or Secret Manager (CLOUD_RUN=true), not this env var
+# Must happen BEFORE any Google client libraries are imported
+if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+    del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+    print("⚠️  Cleaned up stale GOOGLE_APPLICATION_CREDENTIALS from environment")
+
 # CRITICAL: Load environment variables FIRST, before any LangChain imports
 # This ensures LangSmith tracing is activated when LLM is instantiated
 from dotenv import load_dotenv
