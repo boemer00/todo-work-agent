@@ -32,8 +32,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # Google Calendar API scopes
-# Using calendar.events scope for read/write access to events
-SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+# Using full calendar scope for read/write access to calendars and events
+# Note: .calendar.events is too restrictive for listing calendars
+SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # Paths for credentials and token
 CREDENTIALS_PATH = 'credentials.json'
