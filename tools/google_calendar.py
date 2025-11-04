@@ -225,8 +225,9 @@ def create_calendar_event(
         if location:
             event['location'] = location
 
-        # Create the event (using 'primary' calendar)
-        result = service.events().insert(calendarId='primary', body=event).execute()
+        # Create the event
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+        result = service.events().insert(calendarId=calendar_id, body=event).execute()
 
         # Return the event ID (for tracking/syncing)
         return result.get('id')
@@ -264,7 +265,8 @@ def delete_calendar_event(event_id: str) -> bool:
     """
     try:
         service = get_calendar_service()
-        service.events().delete(calendarId='primary', eventId=event_id).execute()
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
         return True
 
     except HttpError as e:
@@ -315,9 +317,10 @@ def update_calendar_event(
 
     try:
         service = get_calendar_service()
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
 
         # First, get the current event
-        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
         # Update only the provided fields
         if summary:
@@ -336,7 +339,7 @@ def update_calendar_event(
             }
 
         # Update the event
-        service.events().update(calendarId='primary', eventId=event_id, body=event).execute()
+        service.events().update(calendarId=calendar_id, eventId=event_id, body=event).execute()
         return True
 
     except HttpError as e:
@@ -383,8 +386,9 @@ def list_calendar_events(
         time_max_str = time_max.isoformat() + 'Z' if time_max.tzinfo is None else time_max.isoformat()
 
         # Call Google Calendar API
+        calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
         events_result = service.events().list(
-            calendarId='primary',
+            calendarId=calendar_id,
             timeMin=time_min_str,
             timeMax=time_max_str,
             maxResults=max_results,
