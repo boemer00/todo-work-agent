@@ -21,6 +21,12 @@ Security:
 import os
 import pickle
 import json
+
+# CRITICAL: Clean up stale GOOGLE_APPLICATION_CREDENTIALS before using Google clients
+# This env var may be inherited from shell/IDE and points to non-existent files
+# We use either OAuth (local) or Secret Manager (Cloud Run), NOT this env var
+if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+    del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
